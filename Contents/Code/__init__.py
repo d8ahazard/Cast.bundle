@@ -7,15 +7,13 @@
 #
 ############################################################################
 
-# To find Work in progress, search this file for the word 
+# To find Work in progress, search this file for the word
 # ToDo in all the modules
 
-
-
+# Constanst used
 NAME = 'FlexTV.bundle'
 VERSION = '1.0.0'
 PREFIX = '/applications/FlexTV'
-# ART = 'art-default.jpg'
 ICON = 'icon-default.png'
 
 
