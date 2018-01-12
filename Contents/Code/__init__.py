@@ -2,7 +2,7 @@
 # This plugin will create a list of medias in a section of Plex as a csv file,
 # or as an xlsx file
 #
-# Made by 
+# Made by
 # dane22....A Plex Community member
 #
 ############################################################################
@@ -22,8 +22,8 @@ ICON = 'icon-default.png'
 def Start():
     print 'Ged 44 starting'
     Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
-    Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")    
-    ObjectContainer.title1 = NAME  + VERSION
+    Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
+    ObjectContainer.title1 = NAME + VERSION
     DirectoryObject.thumb = R(ICON)
     HTTP.CacheTime = 0
 
@@ -34,14 +34,15 @@ def MainMenu(random=0):
     """
     Main menu
     """
-    Log.Debug("**********  Starting MainMenu  **********")    
-    title = NAME  + VERSION
+    Log.Debug("**********  Starting MainMenu  **********")
+    title = NAME + VERSION
     oc = ObjectContainer(
         title1=title,
         no_cache=True,
         no_history=True)
     Log.Debug("**********  Ending MainMenu  **********")
     return oc
+
 
 @route(PREFIX + '/ValidatePrefs')
 def ValidatePrefs():
@@ -82,9 +83,9 @@ def Func2():
     Log.Debug('Params are %s' % param)
     title = 'You called func 1 with the following headers: %s' % param
     # Create a dummy container to return, in order to make
-    # the framework happy.
-    # Can be used if needed to get a return value, by replacing title var with 
-    # what you want to return    
+    # the framework happy
+    # Can be used if needed to get a return value, by replacing title var with
+    # what you want to return
     oc = ObjectContainer(
         title1=title,
         no_cache=True,
