@@ -20,7 +20,6 @@ ICON = 'icon-default.png'
 
 # Start function
 def Start():
-    print 'Ged 44 starting'
     Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
     Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
     ObjectContainer.title1 = NAME + VERSION
