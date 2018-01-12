@@ -1,0 +1,12 @@
+* Make propper icons in Contents/Resources
+
+
+
+
+To use this, issue a GET like:
+http://PMS:32400/applications/FlexTV/Func1?X-Plex-Token=PMS_TOKEN
+
+or
+
+http://PMS:32400/applications/FlexTV/Func2?X-Plex-Token=PMS_TOKEN
+
