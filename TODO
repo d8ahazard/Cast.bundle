@@ -10,3 +10,5 @@ or
 
 http://PMS:32400/applications/FlexTV/Func2?X-Plex-Token=PMS_TOKEN
 
+To add parameters, use the header when issuing the GET, and in there, add a 
+key of FlexTV.bundle (NAME variable) with the value you want

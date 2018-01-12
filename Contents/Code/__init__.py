@@ -9,6 +9,7 @@
 
 # To find Work in progress, search this file for the word
 # ToDo in all the modules
+import json
 
 # Constanst used
 NAME = 'FlexTV.bundle'
@@ -56,11 +57,14 @@ def Func1():
     """
     This is the first function to call
     """
-    Log.Debug('Reciever a call for Function 1')
-    title = 'You called func 1'
-
+    Log.Debug('Recieved a call for Function 1')
+    param = unicode(Request.Headers[NAME])
+    Log.Debug('Params are %s' % param)
+    title = 'You called func 1 with the following headers: %s' % param
     # Create a dummy container to return, in order to make
-    # the framework happy
+    # the framework happy.
+    # Can be used if needed to get a return value, by replacing
+    # title with what you want to return
     oc = ObjectContainer(
         title1=title,
         no_cache=True,
@@ -71,11 +75,16 @@ def Func1():
 @route(PREFIX + '/Func2')
 def Func2():
     """
-    This is the first function to call
+    This is the second function to call
     """
-    print 'Ged Func2'
-    Log.Debug('Reciever a call for Function 2')
-    title = 'You called Func 2'
+    Log.Debug('Recieved a call for Function 2')
+    param = unicode(Request.Headers[NAME])
+    Log.Debug('Params are %s' % param)
+    title = 'You called func 1 with the following headers: %s' % param
+    # Create a dummy container to return, in order to make
+    # the framework happy.
+    # Can be used if needed to get a return value, by replacing title var with 
+    # what you want to return    
     oc = ObjectContainer(
         title1=title,
         no_cache=True,
