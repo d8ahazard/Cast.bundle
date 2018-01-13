@@ -8,6 +8,8 @@
 			<string>*</string>
 		<key>PlexFrameworkVersion</key>
 			<string>2</string>
+		<key>PlexPluginCodePolicy</key>
+			<string>Elevated</string>
 		<key>PlexPluginConsoleLogging</key>
 			<string>0</string>
 	</dict>
