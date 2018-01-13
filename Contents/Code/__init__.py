@@ -14,6 +14,8 @@ import json
 # Constanst used
 NAME = 'FlexTV.bundle'
 VERSION = '1.0.0'
+NAME = 'FlexTV'
+VERSION = '1.0.1'
 PREFIX = '/applications/FlexTV'
 ICON = 'icon-default.png'
 
@@ -52,12 +54,13 @@ def ValidatePrefs():
     return
 
 
-@route(PREFIX + '/Func1')
-def Func1():
+@route(PREFIX + '/Devices')
+def Devices():
     """
-    This is the first function to call
+    Endpoint to scan LAN for cast devices
+	Will need to call pyChromeCast's method to fetch devices, return as an array of JSON
     """
-    Log.Debug('Recieved a call for Function 1')
+    Log.Debug('Recieved a call to fetch devices')
     param = unicode(Request.Headers[NAME])
     Log.Debug('Params are %s' % param)
     title = 'You called func 1 with the following headers: %s' % param
@@ -65,19 +68,72 @@ def Func1():
     # the framework happy.
     # Can be used if needed to get a return value, by replacing
     # title with what you want to return
-    oc = ObjectContainer(
-        title1=title,
+	oc2 = ObjectContainer(
+        title1="Trythisagain",
+		title2='singleQuotes'
         no_cache=True,
         no_history=True)
-    return oc
+    return oc2
 
 
-@route(PREFIX + '/Func2')
-def Func2():
+@route(PREFIX + '/Play')
+def Play():
     """
-    This is the second function to call
+    Endpoint to play media. 
+	
+	Sends to "urn:x-cast:com.google.cast.media", with JSON,
+	after verifying that the Plex app is running on cast device
+	
+	JSON Array Looks like this:
+		[
+			'type' => 'LOAD',
+			'requestId' => $requestId,
+			'media' => [
+				'contentId' => (string)$key,
+				'streamType' => 'BUFFERED',
+				'contentType' => ($transcoderVideo ? 'video' : 'music'),
+				'customData' => [
+					'offset' => ($media['viewOffset'] ?? 0),
+					'directPlay' => true,
+					'directStream' => true,
+					'subtitleSize' => 100,
+					'audioBoost' => 100,
+					'server' => [
+						'machineIdentifier' => $machineIdentifier,
+						'transcoderVideo' => $transcoderVideo,
+						'transcoderVideoRemuxOnly' => false,
+						'transcoderAudio' => true,
+						'version' => '1.4.3.3433',
+						'myPlexSubscription' => true,
+						'isVerifiedHostname' => true,
+						'protocol' => $serverProtocol,
+						'address' => $serverIP,
+						'port' => $serverPort,
+						'accessToken' => $transientToken,
+						'user' => [
+							'username' => $userName
+						],
+						'containerKey' => $queueID . '?own=1&window=200'
+					],
+					'autoplay' => true,
+					'currentTime' => 0
+				]
+			]
+		]
+		
+		Needed params in request headers:
+		Request ID - FlexTV Command ID
+		Content ID
+		Content Type ('video'/'music')
+		Start Offset
+		Server ID
+		TranscoderVideo - Does it need to transcode video?
+		Server Protocol, address, port, transient token
+		Username
+		ContainerKey
+	
     """
-    Log.Debug('Recieved a call for Function 2')
+    Log.Debug('Recieved a call to play media.')
     param = unicode(Request.Headers[NAME])
     Log.Debug('Params are %s' % param)
     title = 'You called func 1 with the following headers: %s' % param
@@ -90,3 +146,81 @@ def Func2():
         no_cache=True,
         no_history=True)
     return oc
+	
+@route(PREFIX + '/Cmd')
+def Cmd():
+    """
+    Media control command(s).
+	
+	Plex-specific commands use the format:
+	
+	"urn:x-cast:plex", '{"type":"<COMMAND>"}'
+	
+	Where <COMMAND> is one of:
+	PLAY (resume)
+	PAUSE
+	STOP
+	STEPFORWARD
+	STEPBACK (BACKWARD? Need to test, not in PHP cast app)
+	PREVIOUS
+	NEXT
+	
+	Additionally, volume commands can be issued using:
+	
+	Mute:
+	"urn:x-cast:com.google.cast.receiver", '{"type":"SET_VOLUME", "volume": { "muted": true }, "requestId":1 }'
+	
+	Unmute:
+	"urn:x-cast:com.google.cast.receiver", '{"type":"SET_VOLUME", "volume": { "muted": false }, "requestId":1 }'
+	
+	Volume (Where $volume is an int from 0-100):
+	"urn:x-cast:com.google.cast.receiver", '{"type":"SET_VOLUME", "volume": { "level": ' . $volume . ' }, "requestId":1 }'
+	
+    """
+    Log.Debug('Recieved a call to control playback')
+    param = unicode(Request.Headers[NAME])
+    Log.Debug('Params are %s' % param)
+    title = 'You called func 1 with the following headers: %s' % param
+    # Create a dummy container to return, in order to make
+    # the framework happy
+    # Can be used if needed to get a return value, by replacing title var with
+    # what you want to return
+    oc = ObjectContainer(
+        title1=title,
+        no_cache=True,
+        no_history=True)
+    return oc
+	
+	
+@route(PREFIX + '/Status')
+def Status():
+    """
+    Fetch player status
+	"urn:x-cast:com.google.cast.media", '{"type":"GET_STATUS", "requestId":1}'
+	
+	Then filter for "/{\"type.*/"
+	
+    """
+    Log.Debug('Recieved a call to control playback')
+    param = unicode(Request.Headers[NAME])
+    Log.Debug('Params are %s' % param)
+    title = 'You called func 1 with the following headers: %s' % param
+    # Create a dummy container to return, in order to make
+    # the framework happy
+    # Can be used if needed to get a return value, by replacing title var with
+    # what you want to return
+    oc = ObjectContainer(
+        title1=title,
+        no_cache=True,
+        no_history=True)
+    return oc
+	
+def LaunchApp():
+	"""
+	Internal method needed to launch/verify Plex app is loaded
+	on cast device before sending other commands.
+	
+	Should return true/false boolean before other commands.
+	
+	Plex Cast application ID is "9AC194DC"
+	"""
