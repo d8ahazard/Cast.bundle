@@ -1,6 +1,6 @@
 ############################################################################
-# This plugin will create a list of medias in a section of Plex as a csv file,
-# or as an xlsx file
+# This plugin will allow external calls, that the plugin can then handle
+# See TODO doc for more details
 #
 # Made by
 # dane22....A Plex Community member
