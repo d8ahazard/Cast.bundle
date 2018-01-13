@@ -12,8 +12,6 @@
 import json
 
 # Constanst used
-NAME = 'FlexTV.bundle'
-VERSION = '1.0.0'
 NAME = 'FlexTV'
 VERSION = '1.0.1'
 PREFIX = '/applications/FlexTV'
@@ -68,12 +66,12 @@ def Devices():
     # the framework happy.
     # Can be used if needed to get a return value, by replacing
     # title with what you want to return
-	oc2 = ObjectContainer(
+    oc = ObjectContainer(
         title1="Trythisagain",
 		title2='singleQuotes',
         no_cache=True,
         no_history=True)
-    return oc2
+    return oc
 
 
 @route(PREFIX + '/Play')
