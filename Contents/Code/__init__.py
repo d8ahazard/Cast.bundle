@@ -70,7 +70,7 @@ def Devices():
     # title with what you want to return
 	oc2 = ObjectContainer(
         title1="Trythisagain",
-		title2='singleQuotes'
+		title2='singleQuotes',
         no_cache=True,
         no_history=True)
     return oc2
