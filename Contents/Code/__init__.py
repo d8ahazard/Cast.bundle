@@ -10,8 +10,10 @@
 # To find Work in progress, search this file for the word
 # ToDo in all the modules
 from __future__ import print_function
-import time
+
 import pychromecast
+import pychromecast.controllers.plex as plexCast
+import time
 import json
 
 # Constanst used
@@ -38,6 +40,7 @@ def MainMenu(random=0):
     """
     Log.Debug("**********  Starting MainMenu  **********")
     title = NAME + VERSION
+    #TODO: Build that list of cast devices and show them here?
     oc = ObjectContainer(
         title1=title,
         no_cache=True,
@@ -69,9 +72,17 @@ def Devices():
     # the framework happy.
     # Can be used if needed to get a return value, by replacing
     # title with what you want to return
+    casts = pychromecast.get_chromecasts()
+    if len(casts) == 0:
+        Summary = "No Devices Found"
+    else:
+        Summary = "Devices found"
+        # TODO: Take what's in casts and build device entries inside oc
+
     oc = ObjectContainer(
         title1="Trythisagain",
 		title2='singleQuotes',
+        summary=Summary
         no_cache=True,
         no_history=True)
     return oc
@@ -123,6 +134,7 @@ def Play():
 		]
 		
 		Needed params in request headers:
+		Cast device IP:PORT
 		Request ID - FlexTV Command ID
 		Content ID
 		Content Type ('video'/'music')
@@ -154,9 +166,11 @@ def Cmd():
     Media control command(s).
 	
 	Plex-specific commands use the format:
-	
-	"urn:x-cast:plex", '{"type":"<COMMAND>"}'
-	
+
+	Required params:
+	client (FriendlyName)
+	command - see below
+
 	Where <COMMAND> is one of:
 	PLAY (resume)
 	PAUSE
@@ -165,6 +179,10 @@ def Cmd():
 	STEPBACK (BACKWARD? Need to test, not in PHP cast app)
 	PREVIOUS
 	NEXT
+	MUTE
+	UNMUTE
+	VOLUME - also requires an int representing level from 0-100
+
 	
 	Additionally, volume commands can be issued using:
 	
@@ -179,15 +197,36 @@ def Cmd():
 	
     """
     Log.Debug('Recieved a call to control playback')
-    param = unicode(Request.Headers[NAME])
-    Log.Debug('Params are %s' % param)
-    title = 'You called func 1 with the following headers: %s' % param
+    chromecasts = pychromecast.get_chromecasts()
+    client = unicode(Request.Headers["client"])
+    cast = next(cc for cc in chromecasts if cc.device.friendly_name == client)
+    command = unicode(Request.Headers["command"])
+    Log.Debug('Params are %s' % client % ' and ' % command)
+    if (cast != ''):
+        cast.wait()
+        if (command == "VOLUME"):
+            level = unicode(Request.Headers["level"])
+            Log.Debug('Trying to set volume to ' % level)
+            mc = cast.media_controller
+            # TODO: Send the volume command, dude.
+        if ((command == "MUTE") | (command == "UNMUTE")):
+            mc = cast.media_controller
+            # TODO: Mute/unmute
+        else:
+            d = plexCast.PlexController()
+            cast.register_handler(d)
+            message = PlexFunction(command)
+            Log.Debug('Formatted Plex message is ' % message)
+            d.send_message(message)
+
+
+    response = 'Params are %s' % client % ' and ' % command
     # Create a dummy container to return, in order to make
     # the framework happy
     # Can be used if needed to get a return value, by replacing title var with
     # what you want to return
     oc = ObjectContainer(
-        title1=title,
+        title1=response,
         no_cache=True,
         no_history=True)
     return oc
@@ -202,26 +241,35 @@ def Status():
 	Then filter for "/{\"type.*/"
 	
     """
-    Log.Debug('Recieved a call to control playback')
-    param = unicode(Request.Headers[NAME])
-    Log.Debug('Params are %s' % param)
-    title = 'You called func 1 with the following headers: %s' % param
+    Log.Debug('Trying to get cast device status here')
+
+    chromecasts = pychromecast.get_chromecasts()
+    client = unicode(Request.Headers["client"])
+    cast = next(cc for cc in chromecasts if cc.device.friendly_name == client)
+    Log.Debug('Params are %s' % client)
+    if (cast != ''):
+        #TODO: Convert status to json or something?
+        status = cast.status
+    else:
+        status = "No matching device."
     # Create a dummy container to return, in order to make
     # the framework happy
     # Can be used if needed to get a return value, by replacing title var with
     # what you want to return
     oc = ObjectContainer(
-        title1=title,
+        title1=status,
         no_cache=True,
         no_history=True)
     return oc
 	
-def LaunchApp():
-	"""
-	Internal method needed to launch/verify Plex app is loaded
-	on cast device before sending other commands.
-	
-	Should return true/false boolean before other commands.
-	
-	Plex Cast application ID is "9AC194DC"
-	"""
+
+def PlexFunction(command):
+    return {
+        'PLAY': "{MESSAGE_TYPE: TYPE_PLAY}",
+        'PAUSE': "{MESSAGE_TYPE: TYPE_PAUSE}",
+        'STOP': "{MESSAGE_TYPE: TYPE_STOP}",
+        'STEPBACKWARD': "{MESSAGE_TYPE: TYPE_STEPBACKWARD}",
+        'STEPFORWARD': "{MESSAGE_TYPE: TYPE_STEPFORWARD}",
+        'BACK': "{MESSAGE_TYPE: TYPE_BACK}",
+        'NEXT': "{MESSAGE_TYPE: TYPE_NEXT}"
+    }[command]
