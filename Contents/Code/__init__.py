@@ -82,7 +82,7 @@ def Devices():
     oc = ObjectContainer(
         title1="Trythisagain",
 		title2='singleQuotes',
-        summary=Summary
+        summary=Summary,
         no_cache=True,
         no_history=True)
     return oc
@@ -202,7 +202,7 @@ def Cmd():
     cast = next(cc for cc in chromecasts if cc.device.friendly_name == client)
     command = unicode(Request.Headers["command"])
     Log.Debug('Params are %s' % client % ' and ' % command)
-    if (cast != ''):
+    if (len(cast) != 0):
         cast.wait()
         if (command == "VOLUME"):
             level = unicode(Request.Headers["level"])
@@ -247,7 +247,7 @@ def Status():
     client = unicode(Request.Headers["client"])
     cast = next(cc for cc in chromecasts if cc.device.friendly_name == client)
     Log.Debug('Params are %s' % client)
-    if (cast != ''):
+    if (len(cast) != 0):
         #TODO: Convert status to json or something?
         status = cast.status
     else:
