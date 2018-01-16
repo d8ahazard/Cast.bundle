@@ -16,9 +16,11 @@ import pychromecast.controllers.plex as plexCast
 import time
 import json
 
+
+
 # Constanst used
 NAME = 'FlexTV'
-VERSION = '1.0.1'
+VERSION = '1.1.0'
 PREFIX = '/applications/FlexTV'
 ICON = 'icon-default.png'
 
@@ -65,26 +67,33 @@ def Devices():
 	Will need to call pyChromeCast's method to fetch devices, return as an array of JSON
     """
     Log.Debug('Recieved a call to fetch devices')
-    param = unicode(Request.Headers[NAME])
-    Log.Debug('Params are %s' % param)
-    title = 'You called func 1 with the following headers: %s' % param
+    mylist = Request.Headers
+    endstring = 'Params are '
+    for s in mylist:
+        endstring += s + " and "
+    Log.Debug('Params:' + endstring)
+    title = endstring
     # Create a dummy container to return, in order to make
     # the framework happy.
     # Can be used if needed to get a return value, by replacing
     # title with what you want to return
     casts = pychromecast.get_chromecasts()
+    count = len(casts)
+    Log.Debug("Found " + str(count) + " cast devices!")
     if len(casts) == 0:
         Summary = "No Devices Found"
     else:
         Summary = "Devices found"
         # TODO: Take what's in casts and build device entries inside oc
 
+    devices = json.dumps(casts)
     oc = ObjectContainer(
-        title1="Trythisagain",
-		title2='singleQuotes',
-        summary=Summary,
+        title1=Summary,
+		title2=devices,
         no_cache=True,
         no_history=True)
+
+
     return oc
 
 
