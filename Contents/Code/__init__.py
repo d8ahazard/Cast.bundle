@@ -86,12 +86,19 @@ def Devices():
         Summary = "Devices found"
         # TODO: Take what's in casts and build device entries inside oc
 
-    devices = json.dumps(casts)
+
     oc = ObjectContainer(
         title1=Summary,
-		title2=devices,
+		title2='foo',
         no_cache=True,
         no_history=True)
+    for cast in casts:
+        oc.add(DirectoryObject(
+            title=cast.name,
+            duration=cast.is_idle,
+            tagline=cast.app_id,
+            summary=cast.cast_type
+        ))
 
 
     return oc
