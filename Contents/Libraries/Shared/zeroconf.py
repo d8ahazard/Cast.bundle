@@ -35,7 +35,6 @@ import threading
 import time
 from functools import reduce
 
-import netifaces
 from six import binary_type, indexbytes, int2byte, iteritems, text_type
 from six.moves import xrange
 
@@ -1583,19 +1582,16 @@ class ZeroconfServiceTypes(object):
 
 
 def get_all_addresses(address_family):
-    return list(set(
-        addr['addr']
-        for iface in netifaces.interfaces()
-        for addr in netifaces.ifaddresses(iface).get(address_family, [])
-        if addr.get('netmask') != HOST_ONLY_NETWORK_MASK
-    ))
+    return list([l for l in (
+        [ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1],
+                       [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in
+                         [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0])
+
+
 
 
 def normalize_interface_choice(choice, address_family):
-    if choice is InterfaceChoice.Default:
-        choice = ['0.0.0.0']
-    elif choice is InterfaceChoice.All:
-        choice = get_all_addresses(address_family)
+    choice = ['0.0.0.0']
     return choice
 
 
@@ -1647,7 +1643,7 @@ class Zeroconf(QuietLogger):
 
     def __init__(
         self,
-        interfaces=InterfaceChoice.All,
+        interfaces=InterfaceChoice.Default,
     ):
         """Creates an instance of the Zeroconf class, establishing
         multicast communications, listening and reaping threads.
