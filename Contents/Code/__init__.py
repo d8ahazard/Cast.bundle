@@ -21,14 +21,13 @@ import json
 
 #Dummy Imports
 #from Framework.api.objectkit import ObjectContainer, DirectoryObject
-#from Framework.docutils import Plugin, HTTP, Log, Request
+#from Framework.docutils import Plugin, HTTP, Log, Request, Network, JSON
 #from Framework.docutils import Data
 
 
-
-NAME = 'FlexTV'
-VERSION = '1.1.100'
-PREFIX = '/applications/FlexTV'
+NAME = 'PlexCast'
+VERSION = '1.1.103'
+PREFIX = '/applications/PlexCast'
 ICON = 'icon-default.png'
 
 
@@ -38,7 +37,8 @@ def Start():
     Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
     ObjectContainer.title1 = NAME + VERSION
     DirectoryObject.thumb = R(ICON)
-    HTTP.CacheTime = 0
+    HTTP.CacheTime = 5
+    fetch_devices()
 
 def UpdateCache():
     Log.Debug("UpdateCache called")
@@ -294,24 +294,27 @@ def PlexFunction(command):
         'NEXT': "{MESSAGE_TYPE: TYPE_NEXT}"
     }[command]
 
-def fetch_devices():
-    rescan = False
+def fetch_devices(rescan = False):
+
     if Data.Exists('last_fetch'):
         lf = Data.LoadObject('last_fetch')
         now = datetime.now()
-        fmt = '%Y-%m-%d %H:%M:%S'
         diff = getTimeDifferenceFromNow(lf,now)
+        Log.Debug("Data exists")
     else:
         now = datetime.now()
         Data.SaveObject('last_fetch',now)
+        Log.Debug("No data exists")
         diff = 120
 
     has_devices = Data.Exists('device_json')
-
-    if (has_devices == False) | (diff >= 20):
+    Log.Debug("Diff is " + str(diff))
+    if (has_devices == False) | (diff >= 10) | rescan==True:
         Log.Debug("Re-fetching devices")
+        IP = Network.Address
+        Log.Debug("Network address is " + IP)
         now = datetime.now()
-        casts = pychromecast.get_chromecasts(2, None, None, True)
+        casts = pychromecast.get_chromecasts(2, None, None, True,IP)
         data_array = []
         for cast in casts:
             cast_item = {
@@ -323,7 +326,7 @@ def fetch_devices():
             }
             data_array.append(cast_item)
 
-
+        Log.Debug("Item count is " + str(len(data_array)))
         if len(data_array) != 0:
             Log.Debug("Found me some cast devices.")
             cast_string = JSON.StringFromObject(data_array)

@@ -69,7 +69,7 @@ class CastListener(object):
             self.callback(name)
 
 
-def start_discovery(callback=None):
+def start_discovery(callback=None,hostname="0.0.0.0"):
     """
     Start discovering chromecasts on the network.
 
@@ -85,7 +85,7 @@ def start_discovery(callback=None):
     """
     listener = CastListener(callback)
     return listener, \
-        ServiceBrowser(Zeroconf(), "_googlecast._tcp.local.", listener)
+        ServiceBrowser(Zeroconf(hostname), "_googlecast._tcp.local.", listener)
 
 
 def stop_discovery(browser):
@@ -93,7 +93,7 @@ def stop_discovery(browser):
     browser.zc.close()
 
 
-def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
+def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT, hostname="0.0.0.0"):
     """ Discover chromecasts on the network. """
     from threading import Event
     try:
@@ -104,7 +104,7 @@ def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
                 discover_complete.set()
 
         discover_complete = Event()
-        listener, browser = start_discovery(callback)
+        listener, browser = start_discovery(callback,hostname)
 
         # Wait for the timeout or the maximum number of devices
         discover_complete.wait(timeout)

@@ -1581,20 +1581,6 @@ class ZeroconfServiceTypes(object):
         return tuple(sorted(listener.found_services))
 
 
-def get_all_addresses(address_family):
-    return list([l for l in (
-        [ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1],
-                       [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in
-                         [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0])
-
-
-
-
-def normalize_interface_choice(choice, address_family):
-    choice = ['0.0.0.0']
-    return choice
-
-
 def new_socket():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -1643,7 +1629,7 @@ class Zeroconf(QuietLogger):
 
     def __init__(
         self,
-        interfaces=InterfaceChoice.Default,
+        hostname="0.0.0.0"
     ):
         """Creates an instance of the Zeroconf class, establishing
         multicast communications, listening and reaping threads.
@@ -1654,7 +1640,8 @@ class Zeroconf(QuietLogger):
         self._GLOBAL_DONE = False
 
         self._listen_socket = new_socket()
-        interfaces = normalize_interface_choice(interfaces, socket.AF_INET)
+
+        interfaces = ["0.0.0.0"]
 
         self._respond_sockets = []
 

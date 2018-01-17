@@ -49,7 +49,7 @@ def _get_chromecast_from_host(host, tries=None, retry_wait=None, timeout=None,
 
 # pylint: disable=too-many-locals
 def get_chromecasts(tries=None, retry_wait=None, timeout=None,
-                    blocking=True, callback=None):
+                    blocking=True, callback=None,hostname="0.0.0.0"):
     """
     Searches the network for chromecast devices.
 
@@ -71,7 +71,7 @@ def get_chromecasts(tries=None, retry_wait=None, timeout=None,
     """
     if blocking:
         # Thread blocking chromecast discovery
-        hosts = discover_chromecasts()
+        hosts = discover_chromecasts(None,5,hostname)
         cc_list = []
         for host in hosts:
             try:
@@ -100,7 +100,7 @@ def get_chromecasts(tries=None, retry_wait=None, timeout=None,
             """Stops discovery of new chromecasts."""
             stop_discovery(browser)
 
-        listener, browser = start_discovery(internal_callback)
+        listener, browser = start_discovery(internal_callback,hostname)
         return internal_stop
 
 
