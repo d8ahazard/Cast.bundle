@@ -8,19 +8,26 @@
 ############################################################################
 
 # To find Work in progress, search this file for the word
-# ToDo in all the modules
+
 from __future__ import print_function
 
 import pychromecast
-import pychromecast.controllers.plex as plexCast
+from datetime import datetime, date
+
+from pychromecast.controllers.plex import PlexController
+from pychromecast.controllers.media import MediaController
 import time
 import json
 
+#Dummy Imports
+#from Framework.api.objectkit import ObjectContainer, DirectoryObject
+#from Framework.docutils import Plugin, HTTP, Log, Request
+#from Framework.docutils import Data
 
 
-# Constanst used
+
 NAME = 'FlexTV'
-VERSION = '1.1.0'
+VERSION = '1.1.100'
 PREFIX = '/applications/FlexTV'
 ICON = 'icon-default.png'
 
@@ -33,16 +40,19 @@ def Start():
     DirectoryObject.thumb = R(ICON)
     HTTP.CacheTime = 0
 
+def UpdateCache():
+    Log.Debug("UpdateCache called")
+    fetch_devices()
 
 @handler(PREFIX, NAME, thumb=ICON)
 @route(PREFIX + '/MainMenu')
-def MainMenu(random=0):
+def MainMenu():
     """
     Main menu
     """
     Log.Debug("**********  Starting MainMenu  **********")
     title = NAME + VERSION
-    #TODO: Build that list of cast devices and show them here?
+    # TODO: Build that list of cast devices and show them here?
     oc = ObjectContainer(
         title1=title,
         no_cache=True,
@@ -66,30 +76,23 @@ def Devices():
     Endpoint to scan LAN for cast devices
     """
     Log.Debug('Recieved a call to fetch devices')
-    casts = pychromecast.get_chromecasts()
+    casts = fetch_devices()
     count = len(casts)
     Log.Debug("Found " + str(count) + " cast devices!")
-    if len(casts) == 0:
-        Status = "No Devices Found"
-    else:
-        Status = "Devices found"
-        # TODO: Take what's in casts and build device entries inside oc
-
 
     oc = ObjectContainer(
         title1="Cast Devices",
-        title2=Status,
         no_cache=True,
         no_history=True)
+
     for cast in casts:
         oc.add(DirectoryObject(
-            title=cast.name,
-            duration=cast.is_idle,
-            tagline=cast.app_id,
-            summary=cast.cast_type,
-            thumb=cast.uri
+            title=cast['name'],
+            duration=cast['status'],
+            tagline=cast['appId'],
+            summary=cast['type'],
+            thumb=cast['uri']
         ))
-
 
     return oc
 
@@ -97,134 +100,145 @@ def Devices():
 @route(PREFIX + '/Play')
 def Play():
     """
-    Endpoint to play media. 
-	
-	Sends to "urn:x-cast:com.google.cast.media", with JSON,
-	after verifying that the Plex app is running on cast device
-	
-	JSON Array Looks like this:
-		[
-			'type' => 'LOAD',
-			'requestId' => $requestId,
-			'media' => [
-				'contentId' => (string)$key,
-				'streamType' => 'BUFFERED',
-				'contentType' => ($transcoderVideo ? 'video' : 'music'),
-				'customData' => [
-					'offset' => ($media['viewOffset'] ?? 0),
-					'directPlay' => true,
-					'directStream' => true,
-					'subtitleSize' => 100,
-					'audioBoost' => 100,
-					'server' => [
-						'machineIdentifier' => $machineIdentifier,
-						'transcoderVideo' => $transcoderVideo,
-						'transcoderVideoRemuxOnly' => false,
-						'transcoderAudio' => true,
-						'version' => '1.4.3.3433',
-						'myPlexSubscription' => true,
-						'isVerifiedHostname' => true,
-						'protocol' => $serverProtocol,
-						'address' => $serverIP,
-						'port' => $serverPort,
-						'accessToken' => $transientToken,
-						'user' => [
-							'username' => $userName
-						],
-						'containerKey' => $queueID . '?own=1&window=200'
-					],
-					'autoplay' => true,
-					'currentTime' => 0
-				]
-			]
-		]
-		
-		Needed params in request headers:
-		Cast device IP:PORT
-		Request ID - FlexTV Command ID
-		Content ID
-		Content Type ('video'/'music')
-		Start Offset
-		Server ID
-		TranscoderVideo - Does it need to transcode video?
-		Server Protocol, address, port, transient token
-		Username
-		ContainerKey
-	
+    Endpoint to play media.
+
+    Sends to "urn:x-cast:com.google.cast.media", with JSON,
+    after verifying that the Plex app is running on cast device
+
+
+    Needed params in request headers:
+    uri
+    requestId
+    contentType
+    offset
+    serverId
+    transcoderVideo
+    serverUri
+    username
+
     """
+
     Log.Debug('Recieved a call to play media.')
-    param = unicode(Request.Headers[NAME])
-    Log.Debug('Params are %s' % param)
-    title = 'You called func 1 with the following headers: %s' % param
-    # Create a dummy container to return, in order to make
-    # the framework happy
-    # Can be used if needed to get a return value, by replacing title var with
-    # what you want to return
+    # client_uri = unicode(Request.Headers('uri')).split(":")
+    # host = client_uri[0]
+    # port = client_uri[1]
+    # request_id = unicode(Request.Headers('requestid'))
+    # content_id = unicode(Request.Headers('contentId')) + '?own=1&window=200'  # key
+    # content_type = unicode(Request.Headers('contentType'))
+    # offset = unicode(Request.Headers('offset'))
+    # server_id = unicode(Request.Headers('serverId'))
+    # transcoder_video = unicode(Request.Headers('transcoderVideo'))
+    # server_uri = unicode(Request.headers('serverUri')).split("://")
+    # server_parts = server_uri[1].split(":")
+    # server_protocol = server_uri[0]
+    # server_ip = server_parts[0]
+    # server_port = server_parts[1]
+    #
+    # username = unicode(Request.Headers('username'))
+    # true = "true"
+    # false = "false"
+    # requestArray = {
+    #     "type": 'LOAD',
+    #     'requestId': request_id,
+    #     'media': {
+    #         'contentId': content_id,
+    #         'streamType': 'BUFFERED',
+    #         'contentType': content_type,
+    #         'customData': {
+    #             'offset': offset,
+    #             'directPlay': true,
+    #             'directStream': true,
+    #             'subtitleSize': 100,
+    #             'audioBoost': 100,
+    #             'server': {
+    #                 'machineIdentifier': server_id,
+    #                 'transcoderVideo': transcoder_video,
+    #                 'transcoderVideoRemuxOnly': false,
+    #                 'transcoderAudio': true,
+    #                 'version': '1.4.3.3433',
+    #                 'myPlexSubscription': true,
+    #                 'isVerifiedHostname': true,
+    #                 'protocol': server_protocol,
+    #                 'address': server_ip,
+    #                 'port': server_port,
+    #                 'user': {
+    #                     'username': username
+    #                 }
+    #             },
+    #             'containerKey': content_id
+    #         },
+    #         'autoplay': true,
+    #         'currentTime': 0
+    #     }
+    # }
+    #
+    # try:
+    #     cast = pychromecast.Chromecast(host,port)
+    # except pychromecast.ChromecastConnectionError:
+    #     Log.Debug('Error connecting to host.')
+    # else:
+    #     cast.wait()
+    #     status = cast.status
+    #     mc = MediaController()
+    #     cast.register_handler(mc)
+    #     string = json.dumps(requestArray)
+    #     mc.send_message(string)
     oc = ObjectContainer(
-        title1=title,
+        title1='Status',
         no_cache=True,
         no_history=True)
     return oc
-	
+
+
 @route(PREFIX + '/Cmd')
 def Cmd():
     """
     Media control command(s).
-	
-	Plex-specific commands use the format:
 
-	Required params:
-	client (FriendlyName)
-	command - see below
+    Plex-specific commands use the format:
 
-	Where <COMMAND> is one of:
-	PLAY (resume)
-	PAUSE
-	STOP
-	STEPFORWARD
-	STEPBACK (BACKWARD? Need to test, not in PHP cast app)
-	PREVIOUS
-	NEXT
-	MUTE
-	UNMUTE
-	VOLUME - also requires an int representing level from 0-100
+    Required params:
+    client (FriendlyName)
+    command - see below
 
-	
-	Additionally, volume commands can be issued using:
-	
-	Mute:
-	"urn:x-cast:com.google.cast.receiver", '{"type":"SET_VOLUME", "volume": { "muted": true }, "requestId":1 }'
-	
-	Unmute:
-	"urn:x-cast:com.google.cast.receiver", '{"type":"SET_VOLUME", "volume": { "muted": false }, "requestId":1 }'
-	
-	Volume (Where $volume is an int from 0-100):
-	"urn:x-cast:com.google.cast.receiver", '{"type":"SET_VOLUME", "volume": { "level": ' . $volume . ' }, "requestId":1 }'
-	
+    Where <COMMAND> is one of:
+    PLAY (resume)
+    PAUSE
+    STOP
+    STEPFORWARD
+    STEPBACK (BACKWARD? Need to test, not in PHP cast app)
+    PREVIOUS
+    NEXT
+    MUTE
+    UNMUTE
+    VOLUME - also requires an int representing level from 0-100
+
+    Volume commands don't require the plex controller...
+    But we could possibly put them in there just to make it a one-stop shop...
+
     """
     Log.Debug('Recieved a call to control playback')
-    chromecasts = pychromecast.get_chromecasts()
+    chromecasts = fetch_devices()
     client = unicode(Request.Headers["client"])
     cast = next(cc for cc in chromecasts if cc.device.friendly_name == client)
     command = unicode(Request.Headers["command"])
     Log.Debug('Params are %s' % client % ' and ' % command)
-    if (len(cast) != 0):
+    if len(cast) != 0:
         cast.wait()
-        if (command == "VOLUME"):
+        if command == "VOLUME":
             level = unicode(Request.Headers["level"])
             Log.Debug('Trying to set volume to ' % level)
             mc = cast.media_controller
             # TODO: Send the volume command, dude.
-        if ((command == "MUTE") | (command == "UNMUTE")):
+        if (command == "MUTE") | (command == "UNMUTE"):
             mc = cast.media_controller
             # TODO: Mute/unmute
         else:
-            d = plexCast.PlexController()
+            d = PlexController()
             cast.register_handler(d)
             message = PlexFunction(command)
-            Log.Debug('Formatted Plex message is ' % message)
+            Log.Debug('Formatted Plex message is %s' % message)
             d.send_message(message)
-
 
     response = 'Params are %s' % client % ' and ' % command
     # Create a dummy container to return, in order to make
@@ -236,16 +250,16 @@ def Cmd():
         no_cache=True,
         no_history=True)
     return oc
-	
-	
+
+
 @route(PREFIX + '/Status')
 def Status():
     """
     Fetch player status
-	"urn:x-cast:com.google.cast.media", '{"type":"GET_STATUS", "requestId":1}'
-	
-	Then filter for "/{\"type.*/"
-	
+    "urn:x-cast:com.google.cast.media", '{"type":"GET_STATUS", "requestId":1}'
+
+    Then filter for "/{\"type.*/"
+
     """
     Log.Debug('Trying to get cast device status here')
 
@@ -253,8 +267,8 @@ def Status():
     client = unicode(Request.Headers["client"])
     cast = next(cc for cc in chromecasts if cc.device.friendly_name == client)
     Log.Debug('Params are %s' % client)
-    if (len(cast) != 0):
-        #TODO: Convert status to json or something?
+    if len(cast) != 0:
+        # TODO: Convert status to json or something?
         status = cast.status
     else:
         status = "No matching device."
@@ -267,7 +281,7 @@ def Status():
         no_cache=True,
         no_history=True)
     return oc
-	
+
 
 def PlexFunction(command):
     return {
@@ -279,3 +293,50 @@ def PlexFunction(command):
         'BACK': "{MESSAGE_TYPE: TYPE_BACK}",
         'NEXT': "{MESSAGE_TYPE: TYPE_NEXT}"
     }[command]
+
+def fetch_devices():
+    rescan = False
+    if Data.Exists('last_fetch'):
+        lf = Data.LoadObject('last_fetch')
+        now = datetime.now()
+        fmt = '%Y-%m-%d %H:%M:%S'
+        diff = getTimeDifferenceFromNow(lf,now)
+    else:
+        now = datetime.now()
+        Data.SaveObject('last_fetch',now)
+        diff = 120
+
+    has_devices = Data.Exists('device_json')
+
+    if (has_devices == False) | (diff >= 20):
+        Log.Debug("Re-fetching devices")
+        now = datetime.now()
+        casts = pychromecast.get_chromecasts(2, None, None, True)
+        data_array = []
+        for cast in casts:
+            cast_item = {
+                "uri":cast.uri,
+                "name":cast.name,
+                "status":cast.is_idle,
+                "type":cast.cast_type,
+                "appId":cast.app_id
+            }
+            data_array.append(cast_item)
+
+
+        if len(data_array) != 0:
+            Log.Debug("Found me some cast devices.")
+            cast_string = JSON.StringFromObject(data_array)
+            Data.Save('device_json',cast_string)
+            Data.SaveObject('last_fetch', now)
+
+        casts = data_array
+    else:
+        casts_string = Data.Load('device_json')
+        casts = JSON.ObjectFromString(casts_string)
+
+    return casts
+
+def getTimeDifferenceFromNow(TimeStart, TimeEnd):
+    timeDiff = TimeEnd - TimeStart
+    return timeDiff.total_seconds() / 60

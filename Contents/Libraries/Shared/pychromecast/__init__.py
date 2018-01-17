@@ -352,6 +352,6 @@ class Chromecast(object):
         return txt
 
     def __unicode__(self):
-        return u"Chromecast({}, {}, {}, {}, {})".format(
+        return u"Chromecast({}, {}, {}, {}, {}, {})".format(
             self.host, self.port, self.device.friendly_name,
-            self.device.model_name, self.device.manufacturer)
+            self.device.model_name, self.device.manufacturer, self.uri)

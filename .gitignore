@@ -59,3 +59,5 @@ Tester.py
 .idea/FlexTV.bundle.iml
 .idea/vcs.xml
 .idea/vcs.xml
+Contents/PlexFiles/bootstrap.py
+Contents/PlexFiles/config.py
