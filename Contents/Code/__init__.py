@@ -64,32 +64,21 @@ def ValidatePrefs():
 def Devices():
     """
     Endpoint to scan LAN for cast devices
-	Will need to call pyChromeCast's method to fetch devices, return as an array of JSON
     """
     Log.Debug('Recieved a call to fetch devices')
-    mylist = Request.Headers
-    endstring = 'Params are '
-    for s in mylist:
-        endstring += s + " and "
-    Log.Debug('Params:' + endstring)
-    title = endstring
-    # Create a dummy container to return, in order to make
-    # the framework happy.
-    # Can be used if needed to get a return value, by replacing
-    # title with what you want to return
     casts = pychromecast.get_chromecasts()
     count = len(casts)
     Log.Debug("Found " + str(count) + " cast devices!")
     if len(casts) == 0:
-        Summary = "No Devices Found"
+        Status = "No Devices Found"
     else:
-        Summary = "Devices found"
+        Status = "Devices found"
         # TODO: Take what's in casts and build device entries inside oc
 
 
     oc = ObjectContainer(
-        title1=Summary,
-		title2='foo',
+        title1="Cast Devices",
+        title2=Status,
         no_cache=True,
         no_history=True)
     for cast in casts:
