@@ -86,7 +86,8 @@ def Devices():
             title=cast.name,
             duration=cast.is_idle,
             tagline=cast.app_id,
-            summary=cast.cast_type
+            summary=cast.cast_type,
+            thumb=cast.uri
         ))
 
 
