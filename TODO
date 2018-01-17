@@ -4,11 +4,11 @@
 
 
 To use this, issue a GET like:
-http://PMS:32400/applications/FlexTV/Func1?X-Plex-Token=PMS_TOKEN
+http://PMS:32400/applications/PlexCast/Func1?X-Plex-Token=PMS_TOKEN
 
 or
 
-http://PMS:32400/applications/FlexTV/Func2?X-Plex-Token=PMS_TOKEN
+http://PMS:32400/applications/PlexCast/Func2?X-Plex-Token=PMS_TOKEN
 
 To add parameters, use the header when issuing the GET, and in there, add a 
-key of FlexTV.bundle (NAME variable) with the value you want
+key of PlexCast.bundle (NAME variable) with the value you want
