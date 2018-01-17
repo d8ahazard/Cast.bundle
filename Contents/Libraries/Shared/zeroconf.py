@@ -1641,7 +1641,7 @@ class Zeroconf(QuietLogger):
 
         self._listen_socket = new_socket()
 
-        interfaces = ["0.0.0.0"]
+        interfaces = [hostname]
 
         self._respond_sockets = []
 
