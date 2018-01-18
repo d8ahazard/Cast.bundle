@@ -21,6 +21,8 @@
           <option value="Contents.Code.HTTP" />
           <option value="Contents.Code.Log" />
           <option value="Contents.Code.Request" />
+          <option value="Contents.Code.DeviceObject.Redirect" />
+          <option value="Contents.Code.DeviceObject.Log" />
         </list>
       </option>
     </inspection_tool>

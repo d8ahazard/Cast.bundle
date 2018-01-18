@@ -12,6 +12,7 @@
 from __future__ import print_function
 
 import pychromecast
+from DeviceObject import DeviceContainer
 from datetime import datetime, date
 
 from pychromecast.controllers.plex import PlexController
@@ -50,6 +51,8 @@ def UpdateCache():
 @handler(PREFIX, NAME, thumb=ICON)
 @route(PREFIX + '/MainMenu')
 def MainMenu():
+    casts = fetch_devices()
+
     """
     Main menu
     """
@@ -60,6 +63,14 @@ def MainMenu():
         title1=title,
         no_cache=True,
         no_history=True)
+    for cast in casts:
+        oc.add(DirectoryObject(
+            title=cast['name'],
+            duration=cast['status'],
+            tagline=cast['uri'],
+            summary=cast['type']
+        ))
+
     Log.Debug("**********  Ending MainMenu  **********")
     return oc
 
@@ -83,21 +94,8 @@ def Devices():
     count = len(casts)
     Log.Debug("Found " + str(count) + " cast devices!")
 
-    oc = ObjectContainer(
-        title1="Cast Devices",
-        no_cache=True,
-        no_history=True)
-
-    for cast in casts:
-        oc.add(DirectoryObject(
-            title=cast['name'],
-            duration=cast['status'],
-            tagline=cast['appId'],
-            summary=cast['type'],
-            thumb=cast['uri']
-        ))
-
-    return oc
+    dc = DeviceContainer(casts)
+    return dc
 
 
 @route(PREFIX + '/Play')
@@ -230,7 +228,7 @@ def Cmd():
         cast.wait()
         if command == "VOLUME":
             level = unicode(Request.Headers["level"])
-            Log.Debug('Trying to set volume to ' % level)
+            Log.Debug('Trying to set volume to %s' % level)
             mc = cast.media_controller
             # TODO: Send the volume command, dude.
         if (command == "MUTE") | (command == "UNMUTE"):
@@ -243,7 +241,7 @@ def Cmd():
             Log.Debug('Formatted Plex message is %s' % message)
             d.send_message(message)
 
-    response = 'Params are %s' % client % ' and ' % command
+    response = 'Params are %s and %s', client, command
     # Create a dummy container to return, in order to make
     # the framework happy
     # Can be used if needed to get a return value, by replacing title var with
@@ -312,7 +310,7 @@ def fetch_devices(rescan = False):
 
     has_devices = Data.Exists('device_json')
     Log.Debug("Diff is " + str(diff))
-    if (has_devices == False) | (diff >= 10) | rescan==True:
+    if (has_devices == False) | (diff >= 120) | rescan==True:
         Log.Debug("Re-fetching devices")
         now = datetime.now()
         casts = pychromecast.get_chromecasts(2, None, None, True)
@@ -336,6 +334,7 @@ def fetch_devices(rescan = False):
 
         casts = data_array
     else:
+        Log.Debug("Returning cached data")
         casts_string = Data.Load('device_json')
         casts = JSON.ObjectFromString(casts_string)
 
@@ -344,3 +343,7 @@ def fetch_devices(rescan = False):
 def getTimeDifferenceFromNow(TimeStart, TimeEnd):
     timeDiff = TimeEnd - TimeStart
     return timeDiff.total_seconds() / 60
+
+
+
+
