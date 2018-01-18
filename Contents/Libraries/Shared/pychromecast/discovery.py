@@ -3,9 +3,18 @@ from uuid import UUID
 
 import six
 from zeroconf import ServiceBrowser, Zeroconf
+import logging
+
 
 DISCOVER_TIMEOUT = 5
 
+log = logging.getLogger(__name__)
+hdlr = logging.FileHandler('C:\\Users\\Administrator\\AppData\\Local\\Plex Media Server\\Logs\\PMS Plugin Logs\\FlexTV.modules.log')
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+hdlr.setFormatter(formatter)
+log.addHandler(hdlr)
+log.setLevel(logging.DEBUG)
+log.addHandler(logging.NullHandler())
 
 class CastListener(object):
     """Zeroconf Cast Services collection."""
@@ -29,6 +38,7 @@ class CastListener(object):
         self.services.pop(name, None)
 
     def add_service(self, zconf, typ, name):
+        log.debug("pcc:discover:add_service called for name of %s" % name)
         """ Add a service to the collection. """
         service = None
         tries = 0
@@ -69,7 +79,7 @@ class CastListener(object):
             self.callback(name)
 
 
-def start_discovery(callback=None,hostname="0.0.0.0"):
+def start_discovery(callback=None):
     """
     Start discovering chromecasts on the network.
 
@@ -85,7 +95,7 @@ def start_discovery(callback=None,hostname="0.0.0.0"):
     """
     listener = CastListener(callback)
     return listener, \
-        ServiceBrowser(Zeroconf(hostname), "_googlecast._tcp.local.", listener)
+        ServiceBrowser(Zeroconf(), "_googlecast._tcp.local.", listener)
 
 
 def stop_discovery(browser):
@@ -93,7 +103,7 @@ def stop_discovery(browser):
     browser.zc.close()
 
 
-def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT, hostname="0.0.0.0"):
+def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
     """ Discover chromecasts on the network. """
     from threading import Event
     try:
@@ -104,7 +114,7 @@ def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT, hostname="0
                 discover_complete.set()
 
         discover_complete = Event()
-        listener, browser = start_discovery(callback,hostname)
+        listener, browser = start_discovery(callback)
 
         # Wait for the timeout or the maximum number of devices
         discover_complete.wait(timeout)

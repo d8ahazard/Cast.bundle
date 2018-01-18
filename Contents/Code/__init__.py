@@ -21,13 +21,14 @@ import json
 
 #Dummy Imports
 #from Framework.api.objectkit import ObjectContainer, DirectoryObject
-#from Framework.docutils import Plugin, HTTP, Log, Request, Network, JSON
+#from Framework.docutils import Plugin, HTTP, Log, Request
 #from Framework.docutils import Data
 
 
-NAME = 'PlexCast'
-VERSION = '1.1.103'
-PREFIX = '/applications/PlexCast'
+
+NAME = 'FlexTV'
+VERSION = '1.1.100'
+PREFIX = '/applications/FlexTV'
 ICON = 'icon-default.png'
 
 
@@ -40,9 +41,11 @@ def Start():
     HTTP.CacheTime = 5
     fetch_devices()
 
+
 def UpdateCache():
     Log.Debug("UpdateCache called")
     fetch_devices()
+
 
 @handler(PREFIX, NAME, thumb=ICON)
 @route(PREFIX + '/MainMenu')
@@ -311,10 +314,8 @@ def fetch_devices(rescan = False):
     Log.Debug("Diff is " + str(diff))
     if (has_devices == False) | (diff >= 10) | rescan==True:
         Log.Debug("Re-fetching devices")
-        IP = Network.Address
-        Log.Debug("Network address is " + IP)
         now = datetime.now()
-        casts = pychromecast.get_chromecasts(2, None, None, True,IP)
+        casts = pychromecast.get_chromecasts(2, None, None, True)
         data_array = []
         for cast in casts:
             cast_item = {

@@ -35,6 +35,7 @@ import threading
 import time
 from functools import reduce
 
+import ifaddr
 from six import binary_type, indexbytes, int2byte, iteritems, text_type
 from six.moves import xrange
 
@@ -52,6 +53,7 @@ __all__ = [
 
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 log.addHandler(logging.NullHandler())
 
 if log.level == logging.NOTSET:
@@ -416,6 +418,10 @@ class DNSRecord(DNSEntry):
         """Abstract method"""
         raise AbstractMethodException
 
+    def __ne__(self, other):
+        """Non-equality test"""
+        return not self.__eq__(other)
+
     def suppressed_by(self, msg):
         """Returns true if any answer in a message can suffice for the
         information held in this record."""
@@ -477,7 +483,12 @@ class DNSAddress(DNSRecord):
 
     def __eq__(self, other):
         """Tests equality on address"""
-        return isinstance(other, DNSAddress) and self.address == other.address
+        return (isinstance(other, DNSAddress) and DNSEntry.__eq__(self, other) and
+                self.address == other.address)
+
+    def __ne__(self, other):
+        """Non-equality test"""
+        return not self.__eq__(other)
 
     def __repr__(self):
         """String representation"""
@@ -509,8 +520,12 @@ class DNSHinfo(DNSRecord):
 
     def __eq__(self, other):
         """Tests equality on cpu and os"""
-        return (isinstance(other, DNSHinfo) and
+        return (isinstance(other, DNSHinfo) and DNSEntry.__eq__(self, other) and
                 self.cpu == other.cpu and self.os == other.os)
+
+    def __ne__(self, other):
+        """Non-equality test"""
+        return not self.__eq__(other)
 
     def __repr__(self):
         """String representation"""
@@ -531,7 +546,12 @@ class DNSPointer(DNSRecord):
 
     def __eq__(self, other):
         """Tests equality on alias"""
-        return isinstance(other, DNSPointer) and self.alias == other.alias
+        return (isinstance(other, DNSPointer) and DNSEntry.__eq__(self, other) and
+                self.alias == other.alias)
+
+    def __ne__(self, other):
+        """Non-equality test"""
+        return not self.__eq__(other)
 
     def __repr__(self):
         """String representation"""
@@ -553,7 +573,12 @@ class DNSText(DNSRecord):
 
     def __eq__(self, other):
         """Tests equality on text"""
-        return isinstance(other, DNSText) and self.text == other.text
+        return (isinstance(other, DNSText) and DNSEntry.__eq__(self, other) and
+                self.text == other.text)
+
+    def __ne__(self, other):
+        """Non-equality test"""
+        return not self.__eq__(other)
 
     def __repr__(self):
         """String representation"""
@@ -585,10 +610,15 @@ class DNSService(DNSRecord):
     def __eq__(self, other):
         """Tests equality on priority, weight, port and server"""
         return (isinstance(other, DNSService) and
+                DNSEntry.__eq__(self, other) and
                 self.priority == other.priority and
                 self.weight == other.weight and
                 self.port == other.port and
                 self.server == other.server)
+
+    def __ne__(self, other):
+        """Non-equality test"""
+        return not self.__eq__(other)
 
     def __repr__(self):
         """String representation"""
@@ -1013,7 +1043,8 @@ class DNSCache(object):
 
     def add(self, entry):
         """Adds an entry"""
-        self.cache.setdefault(entry.key, []).append(entry)
+        # Insert first in list so get returns newest entry
+        self.cache.setdefault(entry.key, []).insert(0, entry)
 
     def remove(self, entry):
         """Removes an entry"""
@@ -1142,14 +1173,16 @@ class Listener(QuietLogger):
             self.log_exception_warning()
             return
 
-        log.debug('Received from %r:%r: %r ', addr, port, data)
-
+        log.debug('zeroconf:Received from %r:%r: %r ', addr, port, data)
+        log.debug("zeroconf:Here's a new message")
         self.data = data
         msg = DNSIncoming(data)
         if not msg.valid:
+            log.debug("zeroconf:Message not valid!")
             pass
 
         elif msg.is_query():
+            log.debug("zeroconf:Message is query")
             # Always multicast responses
             if port == _MDNS_PORT:
                 self.zc.handle_query(msg, _MDNS_ADDR, _MDNS_PORT)
@@ -1161,6 +1194,7 @@ class Listener(QuietLogger):
                 self.zc.handle_query(msg, _MDNS_ADDR, _MDNS_PORT)
 
         else:
+            log.debug("zeroconf:Handling message")
             self.zc.handle_response(msg)
 
 
@@ -1321,7 +1355,7 @@ class ServiceBrowser(threading.Thread):
                 out = DNSOutgoing(_FLAGS_QR_QUERY)
                 out.add_question(DNSQuestion(self.type, _TYPE_PTR, _CLASS_IN))
                 for record in self.services.values():
-                    if not record.is_expired(now):
+                    if not record.is_stale(now):
                         out.add_answer_at_time(record, now)
 
                 self.zc.send(out)
@@ -1581,6 +1615,25 @@ class ZeroconfServiceTypes(object):
         return tuple(sorted(listener.found_services))
 
 
+def get_all_addresses():
+    addresses = []
+    for iface in ifaddr.get_adapters():
+        for addr in iface.ips:
+            ip = addr.ip
+            if type(ip) is str:
+                if len(ip.split(".")) == 4:
+                    addresses.append(ip)
+    return addresses
+
+
+def normalize_interface_choice(choice):
+    if choice is InterfaceChoice.Default:
+        choice = ['0.0.0.0']
+    elif choice is InterfaceChoice.All:
+        choice = get_all_addresses()
+    return choice
+
+
 def new_socket():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -1629,7 +1682,7 @@ class Zeroconf(QuietLogger):
 
     def __init__(
         self,
-        hostname="0.0.0.0"
+        interfaces=InterfaceChoice.All,
     ):
         """Creates an instance of the Zeroconf class, establishing
         multicast communications, listening and reaping threads.
@@ -1640,13 +1693,13 @@ class Zeroconf(QuietLogger):
         self._GLOBAL_DONE = False
 
         self._listen_socket = new_socket()
-
-        interfaces = [hostname]
+        interfaces = normalize_interface_choice(interfaces)
+        interfaces = ["192.168.1.120"]
 
         self._respond_sockets = []
 
         for i in interfaces:
-            log.debug('Adding %r to multicast group', i)
+            log.debug('zeroconf:Adding %r to multicast group', i)
             try:
                 self._listen_socket.setsockopt(
                     socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
@@ -1928,33 +1981,40 @@ class Zeroconf(QuietLogger):
         # Support unicast client responses
         #
         if port != _MDNS_PORT:
+            log.debug("zeroconf:Port is not MDNS")
             out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA, multicast=False)
             for question in msg.questions:
                 out.add_question(question)
 
         for question in msg.questions:
             if question.type == _TYPE_PTR:
+                log.debug("zeroconf:Found pointer")
                 if question.name == "_services._dns-sd._udp.local.":
                     for stype in self.servicetypes.keys():
                         if out is None:
+                            log.debug("zeroconf:no out")
                             out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA)
                         out.add_answer(msg, DNSPointer(
                             "_services._dns-sd._udp.local.", _TYPE_PTR,
                             _CLASS_IN, _DNS_TTL, stype))
                 for service in self.services.values():
                     if question.name == service.type:
+                        log.debug("zeroconf:Found matching question name")
                         if out is None:
                             out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA)
                         out.add_answer(msg, DNSPointer(
                             service.type, _TYPE_PTR,
                             _CLASS_IN, _DNS_TTL, service.name))
             else:
+                log.debug("zeroconf:Not a pointer")
                 try:
                     if out is None:
+                        log.debug("zeroconf:Out is none")
                         out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA)
 
                     # Answer A record queries for any service addresses we know
                     if question.type in (_TYPE_A, _TYPE_ANY):
+                        log.debug("zeroconf:Question type a, any")
                         for service in self.services.values():
                             if service.server == question.name.lower():
                                 out.add_answer(msg, DNSAddress(
@@ -1993,7 +2053,7 @@ class Zeroconf(QuietLogger):
             self.log_warning_once("Dropping %r over-sized packet (%d bytes) %r",
                                   out, len(packet), packet)
             return
-        log.debug('Sending %r (%d bytes) as %r...', out, len(packet), packet)
+        log.debug('zeroconf:Sending %r (%d bytes) as %r...', out, len(packet), packet)
         for s in self._respond_sockets:
             if self._GLOBAL_DONE:
                 return

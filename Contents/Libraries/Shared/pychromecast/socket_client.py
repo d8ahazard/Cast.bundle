@@ -238,12 +238,17 @@ class SocketClient(threading.Thread):
 
         while not self.stop.is_set() and (tries is None or tries > 0):
             try:
-                self.socket = ssl.wrap_socket(socket.socket())
+                self.logger.debug("Trying to connect a socket with host and port of %s and %s",self.host,self.port)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket = sock
+                self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 self.socket.settimeout(self.timeout)
                 self._report_connection_status(
                     ConnectionStatus(CONNECTION_STATUS_CONNECTING,
                                      NetworkAddress(self.host, self.port)))
-                self.socket.connect((self.host, self.port))
+                server_address = (self.host, self.port)
+                self.socket.connect(server_address)
+                self.logger.debug("Made it past the actual connection.")
                 self.connecting = False
                 self._force_recon = False
                 self._report_connection_status(
@@ -258,6 +263,7 @@ class SocketClient(threading.Thread):
             # socket.error is a deprecated alias of OSError in Python 3.3+,
             # can be removed when Python 2.x support is dropped
             except (OSError, socket.error) as err:
+                self.logger.error("Socket error: %s" % err)
                 self.connecting = True
                 if self.stop.is_set():
                     self.logger.error(

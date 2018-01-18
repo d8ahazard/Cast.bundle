@@ -31,6 +31,7 @@ NON_UNICODE_REPR = sys.version_info < (3, )
 
 def _get_chromecast_from_host(host, tries=None, retry_wait=None, timeout=None,
                               blocking=True):
+
     """Creates a Chromecast object from a zeroconf host."""
     # Build device status from the mDNS info, this information is
     # the primary source and the remaining will be fetched
@@ -49,7 +50,7 @@ def _get_chromecast_from_host(host, tries=None, retry_wait=None, timeout=None,
 
 # pylint: disable=too-many-locals
 def get_chromecasts(tries=None, retry_wait=None, timeout=None,
-                    blocking=True, callback=None,hostname="0.0.0.0"):
+                    blocking=True, callback=None):
     """
     Searches the network for chromecast devices.
 
@@ -71,7 +72,7 @@ def get_chromecasts(tries=None, retry_wait=None, timeout=None,
     """
     if blocking:
         # Thread blocking chromecast discovery
-        hosts = discover_chromecasts(None,5,hostname)
+        hosts = discover_chromecasts()
         cc_list = []
         for host in hosts:
             try:
@@ -100,7 +101,7 @@ def get_chromecasts(tries=None, retry_wait=None, timeout=None,
             """Stops discovery of new chromecasts."""
             stop_discovery(browser)
 
-        listener, browser = start_discovery(internal_callback,hostname)
+        listener, browser = start_discovery(internal_callback)
         return internal_stop
 
 
