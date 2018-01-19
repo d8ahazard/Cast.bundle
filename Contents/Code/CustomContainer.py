@@ -2,12 +2,13 @@ from dicttoxml import dicttoxml
 
 ObjectClass = getattr(getattr(Redirect, "_object_class"), "__bases__")[0]
 
-class MediaContainer(ObjectClass):
-    def __init__(self, dict=None):
+class CustomContainer(ObjectClass):
+
+
+    def __init__(self):
         ObjectClass.__init__(self, "")
         self.SetHeader("Content-Type", "application/xml")
         self.items = []
-        self.dict = dict
 
     def Content(self):
         xml = self.to_xml()
@@ -19,7 +20,7 @@ class MediaContainer(ObjectClass):
     def to_xml(self):
         size = str(len(self.items))
         string = ""
-        string += ('<MediaContainer size="' + size + '"')
+        string += ('<' + self.name + ' size="' + size + '"')
         if self.dict is not None:
             for key, value in self.dict.items():
                 string += (" " + key + '="' + str(value) + '"')
@@ -30,7 +31,7 @@ class MediaContainer(ObjectClass):
             for obj in self.items:
                 string += obj.to_xml()
 
-            string += '</MediaContainer>'
+            string += '</' + self.name + '>'
 
         else:
             string += '/>\n'
@@ -38,21 +39,17 @@ class MediaContainer(ObjectClass):
         return string
 
 
-class DeviceContainer(ObjectClass):
-    def __init__(self, dict):
-        ObjectClass.__init__(self, "")
+class MediaContainer(CustomContainer):
+    def __init__(self, dict=None):
         self.dict = dict
+        self.name="MediaContainer"
+        CustomContainer.__init__(self)
 
-    def Content(self):
-        xml = self.to_xml()
-        return xml
 
-    def to_xml(self):
-        dev_string = "<Device"
-        for key, value in self.dict.items():
-            dev_string += (" " + key + '="' + str(value) + '"')
-
-        dev_string += '/>\n'
-        return dev_string
+class DeviceContainer(CustomContainer):
+    def __init__(self, dict=None):
+        self.dict = dict
+        self.name="Device"
+        CustomContainer.__init__(self)
 
 

@@ -18,7 +18,7 @@ import pychromecast
 from pychromecast.controllers.plex import PlexController
 from pychromecast.controllers.media import MediaController
 
-from CustomObject import MediaContainer, DeviceContainer
+from CustomContainer import MediaContainer, DeviceContainer
 
 
 # Dummy Imports
