@@ -7,6 +7,7 @@ accpetable attributes.
 
 ObjectClass = getattr(getattr(Redirect, "_object_class"), "__bases__")[0]
 
+
 class CustomContainer(ObjectClass):
 
 

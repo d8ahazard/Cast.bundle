@@ -23,6 +23,7 @@
           <option value="Contents.Code.Request" />
           <option value="Contents.Code.DeviceObject.Redirect" />
           <option value="Contents.Code.DeviceObject.Log" />
+          <option value="Contents.Code.JSON" />
         </list>
       </option>
     </inspection_tool>

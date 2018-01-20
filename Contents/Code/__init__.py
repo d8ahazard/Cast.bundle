@@ -11,22 +11,21 @@
 
 from __future__ import print_function
 
+import string
 import threading
-from datetime import datetime
 
 import pychromecast
 from pychromecast.controllers.plex import PlexController
 from pychromecast.controllers.media import MediaController
 
-from CustomContainer import MediaContainer, DeviceContainer
+from CustomContainer import MediaContainer, DeviceContainer, CastContainer
 
+# Dummy Imports for PyCharm
 
-# Dummy Imports
 # import Framework.context
 # from Framework.api.objectkit import ObjectContainer, DirectoryObject
 # from Framework.docutils import Plugin, HTTP, Log, Request
 # from Framework.docutils import Data
-
 
 NAME = 'FlexTV'
 VERSION = '1.1.100'
@@ -38,11 +37,10 @@ ICON = 'icon-default.png'
 def Start():
     Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
     Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
-    ObjectContainer.title1 = NAME + VERSION
+    ObjectContainer.title1 = NAME
     DirectoryObject.thumb = R(ICON)
     HTTP.CacheTime = 5
     time = 5 * 60
-    UpdateCache()
     threading.Timer(time, UpdateCache).start()
 
 
@@ -67,6 +65,7 @@ def MainMenu():
         title1=title,
         no_cache=True,
         no_history=True)
+
     for cast in casts:
         oc.add(DirectoryObject(
             title=cast['name'],
@@ -99,7 +98,7 @@ def Devices():
 
     mc = MediaContainer()
     for cast in casts:
-        dc = DeviceContainer(cast)
+        dc = CastContainer(cast)
         mc.add(dc)
 
     return mc
@@ -110,13 +109,11 @@ def Play():
     """
     Endpoint to play media.
 
-    Sends to "urn:x-cast:com.google.cast.media", with JSON,
-    after verifying that the Plex app is running on cast device
-
 
     Needed params in request headers:
     uri
     requestId
+    contentId
     contentType
     offset
     serverId
@@ -127,74 +124,45 @@ def Play():
     """
 
     Log.Debug('Recieved a call to play media.')
-    # client_uri = unicode(Request.Headers('uri')).split(":")
-    # host = client_uri[0]
-    # port = client_uri[1]
-    # request_id = unicode(Request.Headers('requestid'))
-    # content_id = unicode(Request.Headers('contentId')) + '?own=1&window=200'  # key
-    # content_type = unicode(Request.Headers('contentType'))
-    # offset = unicode(Request.Headers('offset'))
-    # server_id = unicode(Request.Headers('serverId'))
-    # transcoder_video = unicode(Request.Headers('transcoderVideo'))
-    # server_uri = unicode(Request.headers('serverUri')).split("://")
-    # server_parts = server_uri[1].split(":")
-    # server_protocol = server_uri[0]
-    # server_ip = server_parts[0]
-    # server_port = server_parts[1]
-    #
-    # username = unicode(Request.Headers('username'))
-    # true = "true"
-    # false = "false"
-    # requestArray = {
-    #     "type": 'LOAD',
-    #     'requestId': request_id,
-    #     'media': {
-    #         'contentId': content_id,
-    #         'streamType': 'BUFFERED',
-    #         'contentType': content_type,
-    #         'customData': {
-    #             'offset': offset,
-    #             'directPlay': true,
-    #             'directStream': true,
-    #             'subtitleSize': 100,
-    #             'audioBoost': 100,
-    #             'server': {
-    #                 'machineIdentifier': server_id,
-    #                 'transcoderVideo': transcoder_video,
-    #                 'transcoderVideoRemuxOnly': false,
-    #                 'transcoderAudio': true,
-    #                 'version': '1.4.3.3433',
-    #                 'myPlexSubscription': true,
-    #                 'isVerifiedHostname': true,
-    #                 'protocol': server_protocol,
-    #                 'address': server_ip,
-    #                 'port': server_port,
-    #                 'user': {
-    #                     'username': username
-    #                 }
-    #             },
-    #             'containerKey': content_id
-    #         },
-    #         'autoplay': true,
-    #         'currentTime': 0
-    #     }
-    # }
-    #
-    # try:
-    #     cast = pychromecast.Chromecast(host,port)
-    # except pychromecast.ChromecastConnectionError:
-    #     Log.Debug('Error connecting to host.')
-    # else:
-    #     cast.wait()
-    #     status = cast.status
-    #     mc = MediaController()
-    #     cast.register_handler(mc)
-    #     string = json.dumps(requestArray)
-    #     mc.send_message(string)
-    oc = ObjectContainer(
-        title1='Status',
-        no_cache=True,
-        no_history=True)
+    params = ['uri', 'requestId', 'contentId', 'contentType', 'offset', 'serverId', 'transcoderVideo', 'serverUri',
+              'username']
+    values = sort_headers(params, True)
+    status = "Missing required headers"
+    if values is not False:
+        Log.Debug("Holy crap, we have all the headers we need.")
+        cast_message = JSON.stringFromObject(player_string(values))
+        client_uri = values['uri']
+        host = client_uri[0]
+        port = client_uri[1]
+
+        try:
+            cast = pychromecast.Chromecast(host, port)
+        except pychromecast.ChromecastConnectionError:
+            Log.Debug('Error connecting to host.')
+        else:
+            cast.wait()
+            app_id = cast.app_display_name
+            mc = MediaController()
+            pc = PlexController()
+            cast.register_handler(mc)
+            cast.register_handler(pc)
+            if app_id == "Plex":
+                Log.Debug("Plex is already running")
+                mc.send_message(cast_message)
+            else:
+                Log.Debug("Launching Plex")
+                try:
+                    pc.launch(mc.send_message(cast_message))
+                except pychromecast.LaunchError, pychromecast.PyChromecastError:
+                    Log.Debug('Error Launching application')
+                finally:
+                    status = "Message sent sucessfully"
+
+    oc = MediaContainer({
+        'Name': 'Playback Status',
+        'Status': status
+    })
+
     return oc
 
 
@@ -335,7 +303,6 @@ def PlexFunction(command):
 
 
 def fetch_devices(rescan=False):
-
     has_devices = Data.Exists('device_json')
     if has_devices == False:
         Log.Debug("No cached data exists, re-scanning.")
@@ -347,6 +314,7 @@ def fetch_devices(rescan=False):
         casts = JSON.ObjectFromString(casts_string)
 
     return casts
+
 
 # Scan our devices and save them to cache.
 # This should NEVER be called from an endpoint...we don't have the time
@@ -361,7 +329,7 @@ def scan_devices():
             "name": cast.name,
             "status": cast.is_idle,
             "type": cast.cast_type,
-            "appId": cast.app_id
+            "app": cast.app_display_name
         }
         data_array.append(cast_item)
 
@@ -375,3 +343,81 @@ def scan_devices():
 def getTimeDifferenceFromNow(TimeStart, TimeEnd):
     timeDiff = TimeEnd - TimeStart
     return timeDiff.total_seconds() / 60
+
+
+def sort_headers(list, strict=False):
+    returns = False
+    for key, value in Request.Headers.items():
+        Log.Debug("Header key %s is %s", key, value)
+        for item in list:
+            look = string.lower(item)
+            low_key = string.lower(key)
+            if low_key in ("X-Plex-" + look, look):
+                if returns == False: returns = {}
+                Log.Debug("We have a " + item)
+                returns[item] = unicode(value)
+
+    if strict == True:
+        if len(returns) == len(list):
+            Log.Debug("We have all of our values.")
+            return returns
+
+        else:
+            Log.Error("Sorry, parameters are missing.")
+    else:
+        return returns
+
+
+def player_string(values):
+    request_id = values['requestId']
+    content_id = values['contentId'] + '?own=1&window=200'  # key
+    content_type = values['contentType']
+    offset = values['offset']
+    server_id = values['serverId']
+    transcoder_video = values['transcoderVideo']
+    # TODO: Make this sexy, see if we can just use the current server. I think so.
+    server_uri = values['serverUri'].split("://")
+    server_parts = server_uri[1].split(":")
+    server_protocol = server_uri[0]
+    server_ip = server_parts[0]
+    server_port = server_parts[1]
+    # TODO: Look this up instead of send it?
+    username = values['username']
+    true = "true"
+    false = "false"
+    requestArray = {
+        "type": 'LOAD',
+        'requestId': request_id,
+        'media': {
+            'contentId': content_id,
+            'streamType': 'BUFFERED',
+            'contentType': content_type,
+            'customData': {
+                'offset': offset,
+                'directPlay': true,
+                'directStream': true,
+                'subtitleSize': 100,
+                'audioBoost': 100,
+                'server': {
+                    'machineIdentifier': server_id,
+                    'transcoderVideo': transcoder_video,
+                    'transcoderVideoRemuxOnly': false,
+                    'transcoderAudio': true,
+                    'version': '1.4.3.3433',
+                    'myPlexSubscription': true,
+                    'isVerifiedHostname': true,
+                    'protocol': server_protocol,
+                    'address': server_ip,
+                    'port': server_port,
+                    'user': {
+                        'username': username
+                    }
+                },
+                'containerKey': content_id
+            },
+            'autoplay': true,
+            'currentTime': 0
+        }
+    }
+
+    return requestArray
