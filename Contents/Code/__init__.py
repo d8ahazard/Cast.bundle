@@ -109,18 +109,6 @@ def Play():
     """
     Endpoint to play media.
 
-
-    Needed params in request headers:
-    uri
-    requestId
-    contentId
-    contentType
-    offset
-    serverId
-    transcoderVideo
-    serverUri
-    username
-
     """
 
     Log.Debug('Recieved a call to play media.')
@@ -137,7 +125,6 @@ def Play():
         try:
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
-            app_id = cast.app_display_name
             pc = PlexController()
             cast.register_handler(pc)
             pc.play_media(values)
@@ -164,47 +151,46 @@ def Cmd():
     Plex-specific commands use the format:
 
     Required params:
-    client (FriendlyName)
-    command - see below
+    Uri
+    Cmd
+    Vol(If setting volume, otherwise, ignored)
 
     Where <COMMAND> is one of:
     PLAY (resume)
     PAUSE
     STOP
     STEPFORWARD
-    STEPBACK (BACKWARD? Need to test, not in PHP cast app)
+    STEPBACKWARD Need to test, not in PHP cast app)
     PREVIOUS
     NEXT
     MUTE
     UNMUTE
     VOLUME - also requires an int representing level from 0-100
 
-    Volume commands don't require the plex controller...
-    But we could possibly put them in there just to make it a one-stop shop...
-
     """
     Log.Debug('Recieved a call to control playback')
     chromecasts = fetch_devices()
-    client = unicode(Request.Headers["client"])
-    cast = next(cc for cc in chromecasts if cc.device.friendly_name == client)
-    command = unicode(Request.Headers["command"])
-    Log.Debug('Params are %s' % client % ' and ' % command)
-    if len(cast) != 0:
-        cast.wait()
-        if command == "VOLUME":
-            level = unicode(Request.Headers["level"])
-            Log.Debug('Trying to set volume to %s' % level)
-            mc = cast.media_controller
-            # TODO: Send the volume command, dude.
-        if (command == "MUTE") | (command == "UNMUTE"):
-            mc = cast.media_controller
-            # TODO: Mute/unmute
-        else:
-            d = PlexController()
-            cast.register_handler(d)
-            message = PlexFunction(command)
-            Log.Debug('Formatted Plex message is %s' % message)
-            d.send_message(message)
+    params = sort_headers(['Uri','Cmd','Vol'])
+    if params is not False:
+        uri = params['Uri'].split(":")
+        cast = pychromecast.Chromecast(uri[0],int(uri[1]))
+        pc = PlexController
+        cast.register_handler(pc)
+        cmd = params['Cmd']
+        level = params["Vol"]
+        Log.Debug("Command is " + cmd)
+
+        if cmd == "play": pc.play()
+        if cmd == "pause": pc.pause()
+        if cmd == "stop": pc.stop()
+        if cmd == "stepforward": pc.stepforward()
+        if cmd == "stepbakward": pc.stepbackward()
+        if cmd == "next": pc.next()
+        if cmd == "previous": pc.previous()
+        if cmd == "mute": pc.mute()
+        if cmd == "unmute": pc.unmute()
+        if cmd == "volume": pc.volume(level)
+        command = unicode(Request.Headers["command"])
 
     response = 'Params are %s and %s', client, command
     # Create a dummy container to return, in order to make
@@ -215,6 +201,41 @@ def Cmd():
         title1=response,
         no_cache=True,
         no_history=True)
+    return oc
+
+
+@route(PREFIX + '/Audio')
+def Audio():
+    """
+    Endpoint to play media.
+
+    """
+
+    Log.Debug('Recieved a call to play an audio clip.')
+    params = ['Uri','Path']
+    values = sort_headers(params, True)
+    status = "Missing required headers"
+    if values is not False:
+        Log.Debug("Holy crap, we have all the headers we need.")
+        client_uri = values['Uri'].split(":")
+        host = client_uri[0]
+        port = int(client_uri[1])
+        path = values['Path']
+        try:
+            cast = pychromecast.Chromecast(host, port)
+            cast.wait()
+            mc = cast.media_controller
+            mc.play_media(path,'audio/mp3')
+        except pychromecast.LaunchError, pychromecast.PyChromecastError:
+            Log.Debug('Error connecting to host.')
+        finally:
+            Log.Debut("We have a cast")
+
+    oc = MediaContainer({
+        'Name': 'Playback Status',
+        'Status': status
+    })
+
     return oc
 
 
@@ -279,17 +300,6 @@ def Status():
         no_history=True)
     return oc
 
-
-def PlexFunction(command):
-    return {
-        'PLAY': "{MESSAGE_TYPE: TYPE_PLAY}",
-        'PAUSE': "{MESSAGE_TYPE: TYPE_PAUSE}",
-        'STOP': "{MESSAGE_TYPE: TYPE_STOP}",
-        'STEPBACKWARD': "{MESSAGE_TYPE: TYPE_STEPBACKWARD}",
-        'STEPFORWARD': "{MESSAGE_TYPE: TYPE_STEPFORWARD}",
-        'BACK': "{MESSAGE_TYPE: TYPE_BACK}",
-        'NEXT': "{MESSAGE_TYPE: TYPE_NEXT}"
-    }[command]
 
 
 def fetch_devices(rescan=False):
