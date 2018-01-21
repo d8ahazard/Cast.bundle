@@ -124,39 +124,29 @@ def Play():
     """
 
     Log.Debug('Recieved a call to play media.')
-    params = ['uri', 'requestId', 'contentId', 'contentType', 'offset', 'serverId', 'transcoderVideo', 'serverUri',
-              'username']
+    params = ['Uri','Requestid', 'Contentid', 'Contenttype', 'Offset', 'Serverid', 'Transcodervideo', 'Serveruri',
+              'Username',"Token","Queueid"]
     values = sort_headers(params, True)
     status = "Missing required headers"
     if values is not False:
         Log.Debug("Holy crap, we have all the headers we need.")
-        cast_message = JSON.stringFromObject(player_string(values))
-        client_uri = values['uri']
+        client_uri = values['Uri'].split(":")
         host = client_uri[0]
-        port = client_uri[1]
+        port = int(client_uri[1])
 
         try:
             cast = pychromecast.Chromecast(host, port)
-        except pychromecast.ChromecastConnectionError:
-            Log.Debug('Error connecting to host.')
-        else:
             cast.wait()
             app_id = cast.app_display_name
-            mc = MediaController()
             pc = PlexController()
-            cast.register_handler(mc)
             cast.register_handler(pc)
-            if app_id == "Plex":
-                Log.Debug("Plex is already running")
-                mc.send_message(cast_message)
-            else:
-                Log.Debug("Launching Plex")
-                try:
-                    pc.launch(mc.send_message(cast_message))
-                except pychromecast.LaunchError, pychromecast.PyChromecastError:
-                    Log.Debug('Error Launching application')
-                finally:
-                    status = "Message sent sucessfully"
+            pc.play_media(values)
+        except pychromecast.LaunchError, pychromecast.PyChromecastError:
+            Log.Debug('Error connecting to host.')
+            status = "Shit"
+        finally:
+            Log.Debug('Error Launching application')
+            status = "Error"
 
     oc = MediaContainer({
         'Name': 'Playback Status',
@@ -346,43 +336,45 @@ def getTimeDifferenceFromNow(TimeStart, TimeEnd):
 
 
 def sort_headers(list, strict=False):
-    returns = False
+    returns = {}
     for key, value in Request.Headers.items():
         Log.Debug("Header key %s is %s", key, value)
         for item in list:
-            look = string.lower(item)
-            low_key = string.lower(key)
-            if low_key in ("X-Plex-" + look, look):
-                if returns == False: returns = {}
+            if key in ("X-Plex-" + item, item):
                 Log.Debug("We have a " + item)
                 returns[item] = unicode(value)
+                list.remove(item)
 
     if strict == True:
-        if len(returns) == len(list):
-            Log.Debug("We have all of our values.")
+        len2 = len(list)
+        if len2 == 0:
+            Log.Debug("We have all of our values: " + JSON.StringFromObject(returns))
             return returns
 
         else:
             Log.Error("Sorry, parameters are missing.")
+            for item in list:
+                Log.Error("Missing " + item)
+            return False
     else:
         return returns
 
 
 def player_string(values):
-    request_id = values['requestId']
-    content_id = values['contentId'] + '?own=1&window=200'  # key
-    content_type = values['contentType']
-    offset = values['offset']
-    server_id = values['serverId']
-    transcoder_video = values['transcoderVideo']
+    request_id = values['Requestid']
+    content_id = values['Contentid'] + '?own=1&window=200'  # key
+    content_type = values['Contenttype']
+    offset = values['Offset']
+    server_id = values['Serverid']
+    transcoder_video = values['Transcodervideo']
     # TODO: Make this sexy, see if we can just use the current server. I think so.
-    server_uri = values['serverUri'].split("://")
+    server_uri = values['Serveruri'].split("://")
     server_parts = server_uri[1].split(":")
     server_protocol = server_uri[0]
     server_ip = server_parts[0]
     server_port = server_parts[1]
     # TODO: Look this up instead of send it?
-    username = values['username']
+    username = values['Username']
     true = "true"
     false = "false"
     requestArray = {
@@ -419,5 +411,6 @@ def player_string(values):
             'currentTime': 0
         }
     }
+    Log.Debug("Player String: " + JSON.StringFromObject(requestArray))
 
     return requestArray
