@@ -41,6 +41,7 @@ def Start():
     DirectoryObject.thumb = R(ICON)
     HTTP.CacheTime = 5
     time = 5 * 60
+    if Data.Exists('device_json') is not True: UpdateCache()
     threading.Timer(time, UpdateCache).start()
 
 
