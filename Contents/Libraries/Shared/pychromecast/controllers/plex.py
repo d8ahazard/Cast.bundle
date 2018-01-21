@@ -46,40 +46,40 @@ class PlexController(BaseController):
 
     def stop(self):
         """ Send stop command. """
-        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_STOP})
 
     def stepforward(self):
-        """ Send play command. """
+        """ Send step forward command. """
+        self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_STEPFORWARD})
 
     def stepbackward(self):
-        """ Send stop command. """
+        """ Send step backward command. """
+        self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_STEPBACKWARD})
 
     def previous(self):
-        """ Send stop command. """
+        """ Send previous command. """
+        self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_PREVIOUS})
 
     def next(self):
-        """ Send stop command. """
+        """ Send next command. """
+        self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_NEXT})
 
     def pause(self):
         """ Send pause command. """
-        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_PAUSE})
 
     def play(self):
         """ Send play command. """
-        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_PLAY})
 
     def play_media(self, item):
-
         def app_launched_callback():
             self.set_load(item)
 
@@ -88,13 +88,12 @@ class PlexController(BaseController):
                                  callback_function=app_launched_callback)
 
     def set_load(self, params):
-        transient_token = params["Token"]
+        self.namespace = "urn:x-cast:com.google.cast.media"
         playQueueID = params['Queueid']
         self.request_id += 1  # Update
         # Session ID
         address = params['Serveruri'].split(":")[1]
         port = params['Serveruri'].split(":")[2]
-        self.namespace = "urn:x-cast:com.google.cast.media"
         msg = {
             "type": "LOAD",
             "requestId": self.request_id,
@@ -104,9 +103,9 @@ class PlexController(BaseController):
             "media": {
                 "contentId": params['Contentid'],
                 "streamType": STREAM_TYPE_BUFFERED,
-                "contentType": "video",
+                "contentType": params['Contenttype'],
                 "customData": {
-                    "offset": 0,
+                    "offset": params['Offset'],
                     "server": {
                         "machineIdentifier": params["Serverid"],
                         "transcoderVideo": params["Transcodervideo"],  # Need to find a variables for this
@@ -118,7 +117,7 @@ class PlexController(BaseController):
                         "protocol": "https",
                         "address": address,
                         "port": port,
-                        "accessToken": transient_token,
+                        "accessToken": params["Token"],
                     },
                     "user": {"username": params["Username"]},
                     "containerKey": "/playQueues/{}?own=1&window=200".format(playQueueID),
@@ -126,6 +125,7 @@ class PlexController(BaseController):
             }
         }
         self.send_message(msg, inc_session_id=True)
+        self.namespace = "urn:x-cast:plex"
 
     def receive_message(self, message, data):
         """ Called when a media message is received. """
