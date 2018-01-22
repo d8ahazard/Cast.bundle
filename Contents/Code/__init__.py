@@ -18,6 +18,16 @@ from pychromecast.controllers.plex import PlexController
 
 from CustomContainer import MediaContainer, DeviceContainer, CastContainer
 
+sys.modules["pychromecast"] = pychromecast
+
+import zeroconf
+sys.modules["zeroconf"] = zeroconf
+
+import logger
+sys.modules["logger"] = logger
+
+dependencies = ['pychromecast', 'zeroconf', 'ifaddr']
+logger.register_logging_handler(dependencies)
 # Dummy Imports for PyCharm
 
 # import Framework.context
@@ -190,12 +200,13 @@ def Cmd():
         #if cmd == "stepforward": pc.stepforward()
         if cmd == "stepbakward": pc.stepbackward()
         if cmd == "next": pc.next()
+        # TODO: See if we can make plexcontroller find it's registered cast automagically
         if cmd == "previous": pc.previous()
-        if cmd == "mute": pc.mute()
-        if cmd == "unmute": pc.unmute()
-        if cmd == "volume": pc.volume(level)
-        if cmd == "volumedown": pc.volume_down()
-        if cmd == "volumeup": pc.volume_up()
+        if cmd == "mute": pc.mute(cast,True)
+        if cmd == "unmute": pc.mute(cast,False)
+        if cmd == "volume": pc.set_volume(level)
+        if cmd == "voldown": pc.volume_down(cast)
+        if cmd == "volup": pc.volume_up(cast)
 
         response = "Command successful"
     # Create a dummy container to return, in order to make
