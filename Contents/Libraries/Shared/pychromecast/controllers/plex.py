@@ -2,6 +2,7 @@
 Controller to interface with the Plex-app.
 """
 from . import BaseController
+from ..config import APP_PLEX
 
 STREAM_TYPE_UNKNOWN = "UNKNOWN"
 STREAM_TYPE_BUFFERED = "BUFFERED"
@@ -25,6 +26,7 @@ class PlexController(BaseController):
     def __init__(self):
         super(PlexController, self).__init__(
             "urn:x-cast:plex", "9AC194DC")
+
         self.app_id = "9AC194DC"
         self.namespace = "urn:x-cast:plex"
         self.request_id = 0
@@ -46,38 +48,33 @@ class PlexController(BaseController):
 
     def stop(self):
         """ Send stop command. """
+        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_STOP})
 
-    def stepforward(self):
-        """ Send step forward command. """
-        self.request_id += 1
-        self.send_message({MESSAGE_TYPE: TYPE_STEPFORWARD})
-
-    def stepbackward(self):
-        """ Send step backward command. """
-        self.request_id += 1
-        self.send_message({MESSAGE_TYPE: TYPE_STEPBACKWARD})
-
-    def previous(self):
-        """ Send previous command. """
-        self.request_id += 1
-        self.send_message({MESSAGE_TYPE: TYPE_PREVIOUS})
-
-    def next(self):
-        """ Send next command. """
-        self.request_id += 1
-        self.send_message({MESSAGE_TYPE: TYPE_NEXT})
-
     def pause(self):
         """ Send pause command. """
+        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_PAUSE})
 
     def play(self):
         """ Send play command. """
+        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_PLAY})
+
+    def previous(self):
+        """ Send previous command. """
+        self.namespace = "urn:x-cast:plex"
+        self.request_id += 1
+        self.send_message({MESSAGE_TYPE: TYPE_PREVIOUS})
+
+    def next(self):
+        """ Send next command. """
+        self.namespace = "urn:x-cast:plex"
+        self.request_id += 1
+        self.send_message({MESSAGE_TYPE: TYPE_NEXT})
 
     def play_media(self, item):
         def app_launched_callback():
@@ -125,7 +122,6 @@ class PlexController(BaseController):
             }
         }
         self.send_message(msg, inc_session_id=True)
-        self.namespace = "urn:x-cast:plex"
 
     def receive_message(self, message, data):
         """ Called when a media message is received. """

@@ -24,6 +24,7 @@
           <option value="Contents.Code.DeviceObject.Redirect" />
           <option value="Contents.Code.DeviceObject.Log" />
           <option value="Contents.Code.JSON" />
+          <option value="pychromecast.controllers.plex_cmd" />
         </list>
       </option>
     </inspection_tool>

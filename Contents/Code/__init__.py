@@ -10,13 +10,11 @@
 # To find Work in progress, search this file for the word
 
 from __future__ import print_function
-
-import string
+import sys
 import threading
 
 import pychromecast
 from pychromecast.controllers.plex import PlexController
-from pychromecast.controllers.media import MediaController
 
 from CustomContainer import MediaContainer, DeviceContainer, CastContainer
 
@@ -172,11 +170,16 @@ def Cmd():
     Log.Debug('Recieved a call to control playback')
     chromecasts = fetch_devices()
     params = sort_headers(['Uri','Cmd','Vol'])
+    response = "Missing paramaters"
     if params is not False:
         uri = params['Uri'].split(":")
         cast = pychromecast.Chromecast(uri[0],int(uri[1]))
-        pc = PlexController
+        cast.wait()
+        pc = PlexController()
+        Log.Debug("Handler namespace is %s" % pc.namespace)
         cast.register_handler(pc)
+        Log.Debug("Handler namespace is %s" % pc.namespace)
+
         cmd = params['Cmd']
         level = params["Vol"]
         Log.Debug("Command is " + cmd)
@@ -184,16 +187,17 @@ def Cmd():
         if cmd == "play": pc.play()
         if cmd == "pause": pc.pause()
         if cmd == "stop": pc.stop()
-        if cmd == "stepforward": pc.stepforward()
+        #if cmd == "stepforward": pc.stepforward()
         if cmd == "stepbakward": pc.stepbackward()
         if cmd == "next": pc.next()
         if cmd == "previous": pc.previous()
         if cmd == "mute": pc.mute()
         if cmd == "unmute": pc.unmute()
         if cmd == "volume": pc.volume(level)
-        command = unicode(Request.Headers["command"])
+        if cmd == "volumedown": pc.volume_down()
+        if cmd == "volumeup": pc.volume_up()
 
-    response = 'Params are %s and %s', client, command
+        response = "Command successful"
     # Create a dummy container to return, in order to make
     # the framework happy
     # Can be used if needed to get a return value, by replacing title var with
