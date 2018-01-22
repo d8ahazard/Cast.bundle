@@ -35,9 +35,9 @@ logger.register_logging_handler(dependencies)
 # from Framework.docutils import Plugin, HTTP, Log, Request
 # from Framework.docutils import Data
 
-NAME = 'FlexTV'
+NAME = 'Cast'
 VERSION = '1.1.100'
-PREFIX = '/applications/FlexTV'
+PREFIX = '/applications/Cast'
 ICON = 'icon-default.png'
 
 
