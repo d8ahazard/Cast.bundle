@@ -2,7 +2,7 @@
 from uuid import UUID
 
 import six
-from zeroconf import ServiceBrowser, Zeroconf
+from zeroconf import ServiceBrowser, Zeroconf, BadTypeInNameException
 import logging
 
 
@@ -89,9 +89,16 @@ def start_discovery(callback=None):
     chromecasts. To stop discovery, call the stop_discovery method with the
     ServiceBrowser object.
     """
+    log.debug("Discovery called")
     listener = CastListener(callback)
-    return listener, \
-        ServiceBrowser(Zeroconf(), "_googlecast._tcp.local.", listener)
+    sb = False
+    try:
+        sb = ServiceBrowser(Zeroconf(), "_googlecast._tcp.local.", listener)
+    except Exception as e:
+        log.error("Error creating service browser: " + e.message)
+    finally:
+        return listener, sb
+
 
 
 def stop_discovery(browser):
@@ -100,8 +107,10 @@ def stop_discovery(browser):
 
 
 def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
+    log.debug("Discover chromecasts called and logged.")
     """ Discover chromecasts on the network. """
     from threading import Event
+    browser = False
     try:
         # pylint: disable=unused-argument
         def callback(name):
@@ -119,7 +128,5 @@ def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
     except Exception as e:
         log.debug("Caught an error: " + e.message)
     finally:
-        if browser:
+        if browser is not False:
             browser.cancel()
-        if zconf:
-            zconf.close()
