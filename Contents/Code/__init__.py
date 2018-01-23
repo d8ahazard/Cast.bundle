@@ -15,6 +15,7 @@ import threading
 
 import time
 import pychromecast
+from pychromecast.controllers.media import MediaController
 from pychromecast.controllers.plex import PlexController
 
 from CustomContainer import MediaContainer, DeviceContainer, CastContainer
@@ -22,9 +23,11 @@ from CustomContainer import MediaContainer, DeviceContainer, CastContainer
 sys.modules["pychromecast"] = pychromecast
 
 import zeroconf
+
 sys.modules["zeroconf"] = zeroconf
 
 import logger
+
 sys.modules["logger"] = logger
 
 dependencies = ['pychromecast', 'zeroconf', 'ifaddr']
@@ -162,8 +165,8 @@ def Play():
 
     """
     Log.Debug('Recieved a call to play media.')
-    params = ['Uri','Requestid', 'Contentid', 'Contenttype', 'Offset', 'Serverid', 'Transcodervideo', 'Serveruri',
-              'Username',"Token","Queueid"]
+    params = ['Uri', 'Requestid', 'Contentid', 'Contenttype', 'Offset', 'Serverid', 'Transcodervideo', 'Serveruri',
+              'Username', "Token", "Queueid"]
     values = sort_headers(params, True)
     status = "Missing required headers"
     if values is not False:
@@ -220,11 +223,11 @@ def Cmd():
     """
     Log.Debug('Recieved a call to control playback')
     chromecasts = fetch_devices()
-    params = sort_headers(['Uri','Cmd','Vol'])
+    params = sort_headers(['Uri', 'Cmd', 'Vol'])
     response = "Missing paramaters"
     if params is not False:
         uri = params['Uri'].split(":")
-        cast = pychromecast.Chromecast(uri[0],int(uri[1]))
+        cast = pychromecast.Chromecast(uri[0], int(uri[1]))
         cast.wait()
         pc = PlexController()
         Log.Debug("Handler namespace is %s" % pc.namespace)
@@ -238,13 +241,13 @@ def Cmd():
         if cmd == "play": pc.play()
         if cmd == "pause": pc.pause()
         if cmd == "stop": pc.stop()
-        #if cmd == "stepforward": pc.stepforward()
+        # if cmd == "stepforward": pc.stepforward()
         if cmd == "stepbakward": pc.stepbackward()
         if cmd == "next": pc.next()
         # TODO: See if we can make plexcontroller find it's registered cast automagically
         if cmd == "previous": pc.previous()
-        if cmd == "mute": pc.mute(cast,True)
-        if cmd == "unmute": pc.mute(cast,False)
+        if cmd == "mute": pc.mute(cast, True)
+        if cmd == "unmute": pc.mute(cast, False)
         if cmd == "volume": pc.set_volume(level)
         if cmd == "voldown": pc.volume_down(cast)
         if cmd == "volup": pc.volume_up(cast)
@@ -261,7 +264,7 @@ def Cmd():
     return oc
 
 
-@route(APP + '/Broadcast')
+@route(APP + '/Audio')
 def Audio():
     """
     Endpoint to play media.
@@ -269,7 +272,7 @@ def Audio():
     """
 
     Log.Debug('Recieved a call to play an audio clip.')
-    params = ['Uri','Path']
+    params = ['Uri', 'Path']
     values = sort_headers(params, True)
     status = "Missing required headers"
     if values is not False:
@@ -282,11 +285,49 @@ def Audio():
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
             mc = cast.media_controller
-            mc.play_media(path,'audio/mp3')
+            mc.play_media(path, 'audio/mp3')
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')
         finally:
             Log.Debut("We have a cast")
+
+    oc = MediaContainer({
+        'Name': 'Playback Status',
+        'Status': status
+    })
+
+    return oc
+
+
+@route(APP + '/Broadcast')
+def Broadcast():
+    """
+    Endpoint to play media.
+
+    """
+
+    Log.Debug('Recieved a call to broadcast an audio clip.')
+    params = ['Path']
+    values = sort_headers(params, True)
+    status = "Missing required headers"
+    if values is not False:
+        casts = fetch_devices()
+        try:
+            for cast in casts:
+                if cast['type'] == "audio":
+                    mc = MediaController()
+                    Log.Debug("We should be broadcasting to " + cast['name'])
+                    uri = cast['uri'].split(":")
+                    cast = pychromecast.Chromecast(uri[0], int(uri[1]))
+                    cast.wait()
+                    cast.register_handler(mc)
+                    mc.play_media(values['Path'], 'audio/mp3')
+
+
+        except pychromecast.LaunchError, pychromecast.PyChromecastError:
+            Log.Debug('Error connecting to host.')
+        finally:
+            Log.Debug("We have a cast")
 
     oc = MediaContainer({
         'Name': 'Playback Status',
@@ -356,7 +397,6 @@ def Status():
         no_cache=True,
         no_history=True)
     return oc
-
 
 
 def fetch_devices(rescan=False):
