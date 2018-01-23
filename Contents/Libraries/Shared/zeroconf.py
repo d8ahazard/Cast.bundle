@@ -1627,7 +1627,7 @@ def normalize_interface_choice(choice):
     if choice is InterfaceChoice.Default:
         choice = ['0.0.0.0']
     elif choice is InterfaceChoice.All:
-        choice = ['0.0.0.0']
+        choice = get_all_addresses()
     return choice
 
 
@@ -1691,7 +1691,7 @@ class Zeroconf(QuietLogger):
 
         self._listen_socket = new_socket()
         interfaces = normalize_interface_choice(interfaces)
-        interfaces = ["192.168.1.120"]
+        interfaces = get_all_addresses()
 
         self._respond_sockets = []
 
