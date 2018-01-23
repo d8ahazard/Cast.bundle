@@ -9,10 +9,6 @@ import logging
 DISCOVER_TIMEOUT = 5
 
 log = logging.getLogger(__name__)
-hdlr = logging.FileHandler('C:\\Users\\Administrator\\AppData\\Local\\Plex Media Server\\Logs\\PMS Plugin Logs\\FlexTV.modules.log')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-hdlr.setFormatter(formatter)
-log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.NullHandler())
 

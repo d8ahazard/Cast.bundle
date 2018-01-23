@@ -20,18 +20,8 @@ from pychromecast.controllers.plex import PlexController
 
 from CustomContainer import MediaContainer, DeviceContainer, CastContainer
 
-sys.modules["pychromecast"] = pychromecast
+import log_helper
 
-import zeroconf
-
-sys.modules["zeroconf"] = zeroconf
-
-import logger
-
-sys.modules["logger"] = logger
-
-dependencies = ['pychromecast', 'zeroconf', 'ifaddr']
-logger.register_logging_handler(dependencies)
 # Dummy Imports for PyCharm
 
 # import Framework.context
@@ -60,6 +50,7 @@ def Start():
     HTTP.CacheTime = 5
     time = 5 * 60
     if Data.Exists('device_json') is not True: UpdateCache()
+    ValidatePrefs()
     threading.Timer(time, UpdateCache).start()
 
 
@@ -127,6 +118,9 @@ def ValidatePrefs():
     Called by the framework every time a user changes the prefs
     We add this dummy function, to avoid errors in the log
     """
+
+    dependencies = ['pychromecast', 'zeroconf', 'ifaddr']
+    log_helper.register_logging_handler(dependencies, level="DEBUG")
     return
 
 

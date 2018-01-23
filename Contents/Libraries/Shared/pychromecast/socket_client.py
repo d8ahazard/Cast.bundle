@@ -19,6 +19,10 @@ from collections import namedtuple
 from struct import pack, unpack
 import sys
 
+import struct
+
+import errno
+
 from . import cast_channel_pb2
 from .dial import CAST_TYPE_CHROMECAST, CAST_TYPE_AUDIO, CAST_TYPE_GROUP
 from .controllers import BaseController
@@ -971,7 +975,7 @@ class ReceiverController(BaseController):
 
 
 def new_socket():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     # SO_REUSEADDR should be equivalent to SO_REUSEPORT for
@@ -993,10 +997,4 @@ def new_socket():
             if not err.errno == errno.ENOPROTOOPT:
                 raise
 
-    # OpenBSD needs the ttl and loop values for the IP_MULTICAST_TTL and
-    # IP_MULTICAST_LOOP socket options as an unsigned char.
-    ttl = struct.pack(b'B', 255)
-    s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
-    loop = struct.pack(b'B', 1)
-    s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, loop)
     return s
