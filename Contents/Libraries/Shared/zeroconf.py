@@ -1691,7 +1691,6 @@ class Zeroconf(QuietLogger):
 
         self._listen_socket = new_socket()
         interfaces = normalize_interface_choice(interfaces)
-        interfaces = get_all_addresses()
 
         self._respond_sockets = []
 
