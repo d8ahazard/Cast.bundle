@@ -116,5 +116,10 @@ def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
         discover_complete.wait(timeout)
 
         return listener.devices
+    except Exception as e:
+        log.debug("Caught an error: " + e.message)
     finally:
-        stop_discovery(browser)
+        if browser:
+            browser.cancel()
+        if zconf:
+            zconf.close()
