@@ -1173,8 +1173,6 @@ class Listener(QuietLogger):
             self.log_exception_warning()
             return
 
-        log.debug('zeroconf:Received from %r:%r: %r ', addr, port, data)
-        log.debug("zeroconf:Here's a new message")
         self.data = data
         msg = DNSIncoming(data)
         if not msg.valid:
@@ -1194,7 +1192,6 @@ class Listener(QuietLogger):
                 self.zc.handle_query(msg, _MDNS_ADDR, _MDNS_PORT)
 
         else:
-            log.debug("zeroconf:Handling message")
             self.zc.handle_response(msg)
 
 
@@ -1630,7 +1627,7 @@ def normalize_interface_choice(choice):
     if choice is InterfaceChoice.Default:
         choice = ['0.0.0.0']
     elif choice is InterfaceChoice.All:
-        choice = get_all_addresses()
+        choice = ['0.0.0.0']
     return choice
 
 
