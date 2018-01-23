@@ -238,9 +238,8 @@ class SocketClient(threading.Thread):
 
         while not self.stop.is_set() and (tries is None or tries > 0):
             try:
-                self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket = new_socket()
                 self.socket.settimeout(self.timeout)
-                self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 self._report_connection_status(
                     ConnectionStatus(CONNECTION_STATUS_CONNECTING,
                                      NetworkAddress(self.host, self.port)))
@@ -968,3 +967,36 @@ class ReceiverController(BaseController):
         self._report_status()
 
         self._status_listeners[:] = []
+
+
+
+def new_socket():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    # SO_REUSEADDR should be equivalent to SO_REUSEPORT for
+    # multicast UDP sockets (p 731, "TCP/IP Illustrated,
+    # Volume 2"), but some BSD-derived systems require
+    # SO_REUSEPORT to be specified explicity.  Also, not all
+    # versions of Python have SO_REUSEPORT available.
+    # Catch OSError and socket.error for kernel versions <3.9 because lacking
+    # SO_REUSEPORT support.
+    try:
+        reuseport = socket.SO_REUSEPORT
+    except AttributeError:
+        pass
+    else:
+        try:
+            s.setsockopt(socket.SOL_SOCKET, reuseport, 1)
+        except (OSError, socket.error) as err:
+            # OSError on python 3, socket.error on python 2
+            if not err.errno == errno.ENOPROTOOPT:
+                raise
+
+    # OpenBSD needs the ttl and loop values for the IP_MULTICAST_TTL and
+    # IP_MULTICAST_LOOP socket options as an unsigned char.
+    ttl = struct.pack(b'B', 255)
+    s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
+    loop = struct.pack(b'B', 1)
+    s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, loop)
+    return s
