@@ -13,6 +13,7 @@ from __future__ import print_function
 import sys
 import threading
 
+import time
 import pychromecast
 from pychromecast.controllers.plex import PlexController
 
@@ -38,12 +39,18 @@ logger.register_logging_handler(dependencies)
 NAME = 'Cast'
 VERSION = '1.1.100'
 PREFIX = '/applications/Cast'
-ICON = 'icon-default.png'
+PREFIX2 = '/chromecast'
+APP = '/chromecast'
+ICON = 'icon-cast.png'
+ICON_CAST = 'icon-cast.png'
+ICON_CAST_AUDIO = 'icon-cast_audio.png'
+ICON_CAST_VIDEO = 'icon-cast_video.png'
+ICON_CAST_GROUP = 'icon-cast_group.png'
+ICON_CAST_REFRESH = 'icon-cast_refresh.png'
 
 
 # Start function
 def Start():
-    Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
     Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
     ObjectContainer.title1 = NAME
     DirectoryObject.thumb = R(ICON)
@@ -59,31 +66,55 @@ def UpdateCache():
     scan_devices()
 
 
-@handler(PREFIX, NAME, thumb=ICON)
+@handler(PREFIX, NAME)
+@handler(PREFIX2, NAME)
 @route(PREFIX + '/MainMenu')
-def MainMenu():
+@route(PREFIX2 + '/MainMenu')
+def MainMenu(Rescanned=False):
     casts = fetch_devices()
 
     """
     Main menu
     """
     Log.Debug("**********  Starting MainMenu  **********")
-    title = NAME + VERSION
+    title = NAME + " - " + VERSION
+    if Data.Exists('last_scan'): title = NAME + " - " + Data.Load('last_scan')
     # TODO: Build that list of cast devices and show them here?
     oc = ObjectContainer(
         title1=title,
         no_cache=True,
-        no_history=True)
+        no_history=True,
+        title_bar="Chromecast",
+        view_group="Details")
 
+    if Rescanned is True:
+        oc.message = "Rescan complete!"
+
+    #
+    do = DirectoryObject(
+        title="Rescan Devices",
+        thumb=R(ICON_CAST_REFRESH),
+        key=Callback(Rescan))
+
+    oc.add(do)
     for cast in casts:
-        oc.add(DirectoryObject(
+        type = cast['type']
+        icon = ICON_CAST
+        if type == "audio": icon = ICON_CAST_AUDIO
+        if type == "cast": icon = ICON_CAST_VIDEO
+        if type == "group": icon = ICON_CAST_GROUP
+        Log.Debug("Icon set to " + icon)
+
+        do = DirectoryObject(
             title=cast['name'],
             duration=cast['status'],
             tagline=cast['uri'],
-            summary=cast['type']
-        ))
+            summary=cast['app'],
+            thumb=R(icon)
+        )
+        Log.Debug('App is {}'.format(cast['app']))
+        oc.add(do)
 
-    Log.Debug("**********  Ending MainMenu  **********")
     return oc
 
 
@@ -96,7 +127,7 @@ def ValidatePrefs():
     return
 
 
-@route(PREFIX + '/Devices')
+@route(APP + '/Devices')
 def Devices():
     """
     Endpoint to scan LAN for cast devices
@@ -113,13 +144,23 @@ def Devices():
     return mc
 
 
-@route(PREFIX + '/Play')
+@route(APP + '/Rescan')
+def Rescan():
+    """
+    Endpoint to scan LAN for cast devices
+    """
+    Log.Debug('Recieved a call to rescan devices')
+    # Grab our response header?
+    UpdateCache()
+    return MainMenu(True)
+
+
+@route(APP + '/Play')
 def Play():
     """
     Endpoint to play media.
 
     """
-
     Log.Debug('Recieved a call to play media.')
     params = ['Uri','Requestid', 'Contentid', 'Contenttype', 'Offset', 'Serverid', 'Transcodervideo', 'Serveruri',
               'Username',"Token","Queueid"]
@@ -152,7 +193,7 @@ def Play():
     return oc
 
 
-@route(PREFIX + '/Cmd')
+@route(APP + '/Cmd')
 def Cmd():
     """
     Media control command(s).
@@ -220,7 +261,7 @@ def Cmd():
     return oc
 
 
-@route(PREFIX + '/Audio')
+@route(APP + '/Broadcast')
 def Audio():
     """
     Endpoint to play media.
@@ -255,7 +296,7 @@ def Audio():
     return oc
 
 
-@route(PREFIX + '/Status')
+@route(APP + '/Status')
 def Status():
     """
     Fetch player status
@@ -352,7 +393,8 @@ def scan_devices():
     Log.Debug("Item count is " + str(len(data_array)))
     cast_string = JSON.StringFromObject(data_array)
     Data.Save('device_json', cast_string)
-
+    last_scan = "Last Scan: " + time.strftime("%B %d %Y - %H:%M")
+    Data.Save('last_scan', last_scan)
     return data_array
 
 
