@@ -11,8 +11,8 @@
 
 from __future__ import print_function
 import sys
-import threading
 
+import threading
 import time
 import pychromecast
 from pychromecast.controllers.media import MediaController
