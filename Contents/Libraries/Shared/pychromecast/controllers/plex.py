@@ -48,31 +48,26 @@ class PlexController(BaseController):
 
     def stop(self):
         """ Send stop command. """
-        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_STOP})
 
     def pause(self):
         """ Send pause command. """
-        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_PAUSE})
 
     def play(self):
         """ Send play command. """
-        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_PLAY})
 
     def previous(self):
         """ Send previous command. """
-        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_PREVIOUS})
 
     def next(self):
         """ Send next command. """
-        self.namespace = "urn:x-cast:plex"
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_NEXT})
 
@@ -122,6 +117,7 @@ class PlexController(BaseController):
             }
         }
         self.send_message(msg, inc_session_id=True)
+        self.namespace = "urn:x-cast:plex"
 
     def receive_message(self, message, data):
         """ Called when a media message is received. """

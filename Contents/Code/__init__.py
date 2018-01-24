@@ -10,17 +10,16 @@
 # To find Work in progress, search this file for the word
 
 from __future__ import print_function
-import sys
 
 import threading
 import time
+
 import pychromecast
 from pychromecast.controllers.media import MediaController
 from pychromecast.controllers.plex import PlexController
 
-from CustomContainer import MediaContainer, DeviceContainer, CastContainer
-
 import log_helper
+from CustomContainer import MediaContainer, DeviceContainer, CastContainer
 
 # Dummy Imports for PyCharm
 
@@ -40,7 +39,7 @@ ICON_CAST_AUDIO = 'icon-cast_audio.png'
 ICON_CAST_VIDEO = 'icon-cast_video.png'
 ICON_CAST_GROUP = 'icon-cast_group.png'
 ICON_CAST_REFRESH = 'icon-cast_refresh.png'
-
+TEST_CLIP = 'test.mp3'
 
 # Start function
 def Start():
@@ -63,7 +62,7 @@ def UpdateCache():
 @handler(PREFIX, NAME)
 @handler(PREFIX2, NAME)
 @route(PREFIX + '/MainMenu')
-@route(PREFIX2 + '/MainMenu')
+@route(PREFIX2)
 def MainMenu(Rescanned=False):
     casts = fetch_devices()
 
@@ -91,23 +90,20 @@ def MainMenu(Rescanned=False):
         key=Callback(Rescan))
 
     oc.add(do)
-    for cast in casts:
-        type = cast['type']
-        icon = ICON_CAST
-        if type == "audio": icon = ICON_CAST_AUDIO
-        if type == "cast": icon = ICON_CAST_VIDEO
-        if type == "group": icon = ICON_CAST_GROUP
-        Log.Debug("Icon set to " + icon)
 
-        do = DirectoryObject(
-            title=cast['name'],
-            duration=cast['status'],
-            tagline=cast['uri'],
-            summary=cast['app'],
-            thumb=R(icon)
-        )
-        Log.Debug('App is {}'.format(cast['app']))
-        oc.add(do)
+    do = DirectoryObject(
+        title="Devices",
+        thumb=R(ICON_CAST),
+        key=Callback(Resources))
+
+    oc.add(do)
+
+    do = DirectoryObject(
+        title="Broadcast",
+        thumb=R(ICON_CAST_AUDIO),
+        key=Callback(Broadcast))
+
+    oc.add(do)
 
     return oc
 
@@ -124,7 +120,8 @@ def ValidatePrefs():
     return
 
 
-@route(APP + '/Devices')
+@route(APP + '/devices')
+@route(PREFIX2 + '/devices')
 def Devices():
     """
     Endpoint to scan LAN for cast devices
@@ -141,7 +138,40 @@ def Devices():
     return mc
 
 
-@route(APP + '/Rescan')
+@route(APP + '/resources')
+@route(PREFIX2 + '/resources')
+def Resources():
+    """
+    Endpoint to scan LAN for cast devices
+    """
+    Log.Debug('Recieved a call to fetch devices')
+    # Grab our response header?
+    casts = fetch_devices()
+
+    oc = ObjectContainer(
+        no_cache=True,
+        no_history=True,
+        view_group="Details")
+
+    for cast in casts:
+        type = cast['type']
+        icon = ICON_CAST
+        if type == "audio": icon = ICON_CAST_AUDIO
+        if type == "cast": icon = ICON_CAST_VIDEO
+        if type == "group": icon = ICON_CAST_GROUP
+        do = DirectoryObject(
+            title=cast['name'],
+            duration=cast['status'],
+            tagline=cast['uri'],
+            summary=cast['app'],
+            key=Callback(Status, input=cast['name']),
+            thumb=R(icon))
+        oc.add(do)
+
+    return oc
+
+
+@route(APP + '/rescan')
 def Rescan():
     """
     Endpoint to scan LAN for cast devices
@@ -152,7 +182,7 @@ def Rescan():
     return MainMenu(True)
 
 
-@route(APP + '/Play')
+@route(APP + '/play')
 def Play():
     """
     Endpoint to play media.
@@ -190,7 +220,7 @@ def Play():
     return oc
 
 
-@route(APP + '/Cmd')
+@route(APP + '/cmd')
 def Cmd():
     """
     Media control command(s).
@@ -258,7 +288,7 @@ def Cmd():
     return oc
 
 
-@route(APP + '/Audio')
+@route(APP + '/audio')
 def Audio():
     """
     Endpoint to play media.
@@ -284,27 +314,55 @@ def Audio():
             Log.Debug('Error connecting to host.')
         finally:
             Log.Debut("We have a cast")
+            status = "Playback successful"
 
-    oc = MediaContainer({
-        'Name': 'Playback Status',
-        'Status': status
-    })
+    oc = ObjectContainer(
+        title1=status,
+        no_cache=True,
+        no_history=True)
 
     return oc
 
 
-@route(APP + '/Broadcast')
+@route(APP + '/broadcast/test')
+def Test():
+    values = {'Path': R(TEST_CLIP)}
+    status = "Test failed."
+    casts = fetch_devices()
+    try:
+        for cast in casts:
+            if cast['type'] == "audio":
+                mc = MediaController()
+                Log.Debug("We should be broadcasting to " + cast['name'])
+                uri = cast['uri'].split(":")
+                cast = pychromecast.Chromecast(uri[0], int(uri[1]))
+                cast.wait()
+                cast.register_handler(mc)
+                mc.play_media(values['Path'], 'audio/mp3')
+
+
+    except pychromecast.LaunchError, pychromecast.PyChromecastError:
+        Log.Debug('Error connecting to host.')
+    finally:
+        Log.Debug("We have a cast")
+    status = "Test successful!"
+
+    oc = ObjectContainer(
+        title1=status,
+        no_cache=True,
+        no_history=True)
+
+    return oc
+
+
+@route(APP + '/broadcast')
 def Broadcast():
-    """
-    Endpoint to play media.
-
-    """
-
     Log.Debug('Recieved a call to broadcast an audio clip.')
     params = ['Path']
     values = sort_headers(params, True)
-    status = "Missing required headers"
+    status = "No clip specified"
     if values is not False:
+        do = False
         casts = fetch_devices()
         try:
             for cast in casts:
@@ -323,16 +381,26 @@ def Broadcast():
         finally:
             Log.Debug("We have a cast")
 
-    oc = MediaContainer({
-        'Name': 'Playback Status',
-        'Status': status
-    })
+    else:
+        do = DirectoryObject(
+            title='Test Broadcast',
+            tagline="Send a test broadcast to audio devices.",
+            key=Callback(Test))
+        status = "Foo"
+
+    oc = ObjectContainer(
+        title1=status,
+        no_cache=True,
+        no_history=True)
+
+    if do is not False: oc.add(do)
 
     return oc
 
 
-@route(APP + '/Status')
-def Status():
+@route(APP + '/status')
+@route(APP + '/resources/status')
+def Status(input=False):
     """
     Fetch player status
     TODO: Figure out how to parse and return additional data here
@@ -341,6 +409,7 @@ def Status():
     uri = "FOOBAR"
     name = "FOOBAR"
     cc = []
+    showAll = False
     Log.Debug('Trying to get cast device status here')
     for key, value in Request.Headers.items():
         Log.Debug("Header key %s is %s", key, value)
@@ -352,44 +421,58 @@ def Status():
             Log.Debug("X-Plex-Clientname: " + value)
             name = value
 
+    if input is not False: name = input
+    if uri == name: showAll = True
+
     chromecasts = fetch_devices()
+    devices = []
+
     for chromecast in chromecasts:
-        if chromecast['name'] == name:
-            Log.Debug("Found a matching chromecast: " + name)
-            cc = chromecast
-        if chromecast['uri'] == uri:
-            Log.Debug("Found a matching uri:" + uri)
-            cc = chromecast
+        cc = False
+        if showAll is not True:
+            if chromecast['name'] == name:
+                Log.Debug("Found a matching chromecast: " + name)
+                cc = chromecast
 
-    if len(cc) != 0:
-        Log.Debug("We have set a chromecast here.")
-        uris = cc['uri'].split(":")
-        host = uris[0]
-        port = uris[1]
-        Log.Debug("Host and port are %s and %s", host, port)
-        cc = pychromecast.Chromecast(host, int(port))
-        Log.Debug("Waiting for device")
-        # cc.wait()
-        Log.Debug("Device is here!")
-        if cc.is_idle != True:
-            Log.Debug("We have a non-idle cast")
-            status = "Running" + cc.app_display_name()
+            if chromecast['uri'] == uri:
+                Log.Debug("Found a matching uri:" + uri)
+                cc = chromecast
         else:
-            status = "Idle"
+            cc = chromecast
 
-    else:
-        status = "No matching device."
+        if cc is not False:
+            devices.append(cc)
 
-    if uri == name:
-        status = "No device specified"
-    # Create a dummy container to return, in order to make
-    # the framework happy
-    # Can be used if needed to get a return value, by replacing title var with
-    # what you want to return
     oc = ObjectContainer(
-        title1=status,
+        title1="Status",
         no_cache=True,
         no_history=True)
+
+    if len(devices) != 0:
+        for device in devices:
+            Log.Debug("We have set a chromecast here.")
+            uris = device['uri'].split(":")
+            host = uris[0]
+            port = uris[1]
+            Log.Debug("Host and port are %s and %s", host, port)
+            cc = pychromecast.Chromecast(host, int(port))
+            Log.Debug("Waiting for device")
+            cc.wait(2)
+            Log.Debug("Device is here!")
+            if cc.is_idle != True:
+                Log.Debug("We have a non-idle cast")
+                status = "Running" + cc.app_display_name()
+            else:
+                status = "Idle"
+
+            do = DirectoryObject(
+                title=device['name'],
+                duration=device['status'],
+                tagline=device['uri'],
+                summary=device['app']
+            )
+            oc.add(do)
+
     return oc
 
 
