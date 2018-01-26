@@ -13,6 +13,12 @@ from __future__ import print_function
 
 import threading
 import time
+import json
+
+import xml.etree.ElementTree as ET
+
+import os
+import xml
 
 import pychromecast
 from pychromecast.controllers.media import MediaController
@@ -41,6 +47,7 @@ ICON_CAST_GROUP = 'icon-cast_group.png'
 ICON_CAST_REFRESH = 'icon-cast_refresh.png'
 TEST_CLIP = 'test.mp3'
 
+
 # Start function
 def Start():
     Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
@@ -50,6 +57,7 @@ def Start():
     time = 5 * 60
     if Data.Exists('device_json') is not True: UpdateCache()
     ValidatePrefs()
+    UpdateCache()
     threading.Timer(time, UpdateCache).start()
 
 
@@ -116,7 +124,7 @@ def ValidatePrefs():
     """
 
     dependencies = ['pychromecast', 'zeroconf', 'ifaddr']
-    log_helper.register_logging_handler(dependencies, level="DEBUG")
+    # log_helper.register_logging_handler(dependencies, level="DEBUG")
     return
 
 
@@ -126,7 +134,27 @@ def Devices():
     """
     Endpoint to scan LAN for cast devices
     """
-    Log.Debug('Recieved a call to fetch devices')
+    Log.Debug('Recieved a call to fetch cast devices')
+    # Grab our response header?
+    casts = fetch_devices()
+
+    mc = MediaContainer()
+    for cast in casts:
+        Log.Debug("Cast type is " + cast['type'])
+        if (cast['type'] == 'cast') | (cast['type'] == 'audio') | (cast['type'] == 'group'):
+            dc = CastContainer(cast)
+            mc.add(dc)
+
+    return mc
+
+
+@route(APP + '/clients')
+@route(PREFIX2 + '/clients')
+def Clients():
+    """
+    Endpoint to scan LAN for cast devices
+    """
+    Log.Debug('Recieved a call to fetch all devices')
     # Grab our response header?
     casts = fetch_devices()
 
@@ -506,6 +534,24 @@ def scan_devices():
             "app": cast.app_display_name
         }
         data_array.append(cast_item)
+
+    Log.Debug("Item count is " + str(len(data_array)))
+    port = os.environ.get("PLEXSERVERPORT")
+    myurl = 'http://127.0.0.1:%s/clients' % port
+    Log.Debug("Gonna connect to %s" % myurl)
+    req = HTTP.Request(myurl)
+    req.load()
+    clientData = req.content
+    root = ET.fromstring(clientData)
+    for device in root.iter('Server'):
+        local_item = {
+            "name": device.get('name'),
+            "uri": device.get('host') + ":" + str(device.get('port')),
+            "status": "n/a",
+            "type": device.get('product'),
+            "app": "Plex Client"
+        }
+        data_array.append(local_item)
 
     Log.Debug("Item count is " + str(len(data_array)))
     cast_string = JSON.StringFromObject(data_array)
