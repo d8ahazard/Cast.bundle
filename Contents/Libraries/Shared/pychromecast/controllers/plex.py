@@ -84,6 +84,12 @@ class PlexController(BaseController):
         playQueueID = params['Queueid']
         self.request_id += 1  # Update
         # Session ID
+        if params['Transcodervideo'] == "true":
+            tv = True
+        else:
+            tv = False
+
+
         address = params['Serveruri'].split(":")[1]
         port = params['Serveruri'].split(":")[2]
         msg = {
@@ -100,7 +106,7 @@ class PlexController(BaseController):
                     "offset": params['Offset'],
                     "server": {
                         "machineIdentifier": params["Serverid"],
-                        "transcoderVideo": params["Transcodervideo"],  # Need to find a variables for this
+                        "transcoderVideo": tv,  # Need to find a variables for this
                         "transcoderVideoRemuxOnly": False,  # Need to find a variable for this
                         "transcoderAudio": True,  # Need to find a variable for this
                         "version": "1.1",   # TODO: Look this up proper-like
