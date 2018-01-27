@@ -217,7 +217,7 @@ def Play():
 
     """
     Log.Debug('Recieved a call to play media.')
-    params = ['Uri', 'Requestid', 'Contentid', 'Contenttype', 'Offset', 'Serverid', 'Transcodervideo', 'Serveruri',
+    params = ['Uri', 'Requestid', 'Contentid', 'Contenttype', 'Offset', 'Serverid', 'Serveruri',
               'Username', "Token", "Queueid"]
     values = sort_headers(params, True)
     status = "Missing required headers"
@@ -226,19 +226,24 @@ def Play():
         client_uri = values['Uri'].split(":")
         host = client_uri[0]
         port = int(client_uri[1])
-
+        cast = False
         try:
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
+            type = cast.cast_type
             pc = PlexController()
             cast.register_handler(pc)
-            pc.play_media(values)
+            pc.play_media(values,type)
+
+
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')
-            status = "Shit"
-        finally:
-            Log.Debug('Error Launching application')
             status = "Error"
+        finally:
+            if cast is not False:
+                status = "Success"
+
+                Log.Debug("Cast status: " + status)
 
     oc = MediaContainer({
         'Name': 'Playback Status',

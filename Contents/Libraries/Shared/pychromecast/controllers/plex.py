@@ -71,20 +71,21 @@ class PlexController(BaseController):
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_NEXT})
 
-    def play_media(self, item):
+    def play_media(self, item,type):
         def app_launched_callback():
-            self.set_load(item)
+            self.set_load(item, type)
 
         receiver_ctrl = self._socket_client.receiver_controller
         receiver_ctrl.launch_app(self.app_id,
                                  callback_function=app_launched_callback)
 
-    def set_load(self, params):
+    def set_load(self, params,type):
         self.namespace = "urn:x-cast:com.google.cast.media"
         playQueueID = params['Queueid']
         self.request_id += 1  # Update
         # Session ID
-        if params['Transcodervideo'] == "true":
+        if (type == 'audio') | (type == 'group'):
+        # if params['Transcodervideo'] != "true":
             tv = True
         else:
             tv = False
@@ -124,6 +125,7 @@ class PlexController(BaseController):
         }
         self.send_message(msg, inc_session_id=True)
         self.namespace = "urn:x-cast:plex"
+
 
     def receive_message(self, message, data):
         """ Called when a media message is received. """
