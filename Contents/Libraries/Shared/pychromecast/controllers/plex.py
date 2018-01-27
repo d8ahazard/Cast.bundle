@@ -32,6 +32,7 @@ class PlexController(BaseController):
         self.request_id = 0
         self.media_session_id = 0
         self.receiver = None
+        self.last_message = "No messages sent"
 
     def set_volume(self, percent):
         percent = float(percent) / 100
@@ -70,6 +71,9 @@ class PlexController(BaseController):
         """ Send next command. """
         self.request_id += 1
         self.send_message({MESSAGE_TYPE: TYPE_NEXT})
+
+    def get_last_message(self):
+        return self.last_message
 
     def play_media(self, item,type):
         def app_launched_callback():
@@ -123,9 +127,10 @@ class PlexController(BaseController):
                 },
             }
         }
+
         self.send_message(msg, inc_session_id=True)
         self.namespace = "urn:x-cast:plex"
-
+        self.last_message = msg
 
     def receive_message(self, message, data):
         """ Called when a media message is received. """

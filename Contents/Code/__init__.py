@@ -226,7 +226,7 @@ def Play():
         client_uri = values['Uri'].split(":")
         host = client_uri[0]
         port = int(client_uri[1])
-        cast = False
+        pc = False
         try:
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
@@ -240,9 +240,11 @@ def Play():
             Log.Debug('Error connecting to host.')
             status = "Error"
         finally:
-            if cast is not False:
+            if pc is not False:
                 status = "Success"
-
+                msg = pc.last_message
+                string = JSON.StringFromObject(msg)
+                Log.Debug("Message: " + string)
                 Log.Debug("Cast status: " + status)
 
     oc = MediaContainer({
