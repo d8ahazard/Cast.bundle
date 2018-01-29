@@ -11,6 +11,7 @@
 
 from __future__ import print_function
 
+import base64
 import threading
 import time
 import json
@@ -214,13 +215,13 @@ def Rescan():
 def Play():
     """
     Endpoint to play media.
-
     """
     Log.Debug('Recieved a call to play media.')
     params = ['Uri', 'Requestid', 'Contentid', 'Contenttype', 'Offset', 'Serverid', 'Serveruri',
               'Username', "Token", "Queueid"]
     values = sort_headers(params, True)
     status = "Missing required headers"
+    string = status
     if values is not False:
         Log.Debug("Holy crap, we have all the headers we need.")
         client_uri = values['Uri'].split(":")
@@ -245,11 +246,13 @@ def Play():
                 msg = pc.last_message
                 string = JSON.StringFromObject(msg)
                 Log.Debug("Message: " + string)
+                string = base64.b64encode(string)
                 Log.Debug("Cast status: " + status)
 
     oc = MediaContainer({
         'Name': 'Playback Status',
-        'Status': status
+        'Status': status,
+        'Message': string
     })
 
     return oc
