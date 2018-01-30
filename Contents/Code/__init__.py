@@ -567,7 +567,8 @@ def scan_devices():
             "name": cast.name,
             "status": cast.is_idle,
             "type": cast.cast_type,
-            "app": cast.app_display_name
+            "app": cast.app_display_name,
+            'id': cast.uri
         }
         data_array.append(cast_item)
 
@@ -585,7 +586,8 @@ def scan_devices():
             "uri": device.get('host') + ":" + str(device.get('port')),
             "status": "n/a",
             "type": device.get('product'),
-            "app": "Plex Client"
+            "app": "Plex Client",
+            "id": device.get('machineIdentifier')
         }
         data_array.append(local_item)
 
