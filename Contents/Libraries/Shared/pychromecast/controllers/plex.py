@@ -97,17 +97,22 @@ class PlexController(BaseController):
 
         address = params['Serveruri'].split(":")[1]
         port = params['Serveruri'].split(":")[2]
+
         msg = {
           "type": "LOAD",
           "requestId": self.request_id,
-          "sessionId": self.request_id,   #Does this need to be static?
+          "sessionId": None,   #Does this need to be static?
           "media": {
             "contentId": params['Contentid'],
             "streamType": "BUFFERED",
+              "metadata": None,
+              "duration": None,
+              "tracks": None,
+              "textTrackStyle": None,
             "customData": {
               "playQueueType": params['Contenttype'],  #TODO: GET THIS RIGHT
               "providerIdentifier": "com.plexapp.plugins.library",
-              "containerKey": "/playQueues/{}?own=1&window=200".format(playQueueID),
+              "containerKey": "/playQueues/{}?own=1".format(playQueueID),
               "offset": params['Offset'],
               "directPlay": True,
               "directStream": True,
@@ -143,39 +148,11 @@ class PlexController(BaseController):
               }
             }
           },
+          "activeTrackIds":None,
           "autoplay": True,
-          "currentTime": params['Offset']
+          "currentTime": params['Offset'],
+          "customData": None
         }
-        # msg = {
-        #     "type": "LOAD",
-        #     "requestId": self.request_id,
-        #     "sessionId": "python_player",  # Update
-        #     "autoplay": True,
-        #     "currentTime": 0,
-        #     "media": {
-        #         "contentId": params['Contentid'],
-        #         "streamType": 'BUFFERED',
-        #         "contentType": params['Contenttype'],
-        #         "customData": {
-        #             "offset": params['Offset'],
-        #             "server": {
-        #                 "machineIdentifier": params["Serverid"],
-        #                 "transcoderVideo": True,  # Need to find a variables for this
-        #                 "transcoderVideoRemuxOnly": False,  # Need to find a variable for this
-        #                 "transcoderAudio": True,  # Need to find a variable for this
-        #                 "version": "1.1",   # TODO: Look this up proper-like
-        #                 "myPlexSubscription": True,  # TODO: Look this up proper-like too
-        #                 "isVerifiedHostname": True,  # Need to find a variable for this
-        #                 "protocol": "https",
-        #                 "address": address,
-        #                 "port": port,
-        #                 "accessToken": params["Token"],
-        #             },
-        #             "user": {"username": params["Username"]},
-        #             "containerKey": "/playQueues/{}?own=1&window=200".format(playQueueID),
-        #         },
-        #     }
-        # }
 
         self.send_message(msg, inc_session_id=True)
         self.namespace = "urn:x-cast:plex"
