@@ -235,6 +235,12 @@ def DownloadLogs():
         return ZipObject(buff.getvalue())
 
     Log.Debug("No log path found, foo.")
+    return ObjectContainer(
+        no_cache=True,
+        title1="No logs found",
+        no_history=True,
+        view_group="Details")
+
 
 
 @route(APP + '/play')

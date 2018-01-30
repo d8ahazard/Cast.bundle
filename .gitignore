@@ -62,3 +62,4 @@ Tester.py
 .idea/vcs.xml
 Contents/PlexFiles/bootstrap.py
 Contents/PlexFiles/config.py
+!/Contents/Libraries/Shared/subzero/lib/
