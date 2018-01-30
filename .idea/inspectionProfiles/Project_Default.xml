@@ -28,6 +28,7 @@
           <option value="Contents.Code.Network" />
           <option value="Contents.Code.Data" />
           <option value="Contents.Code.XML" />
+          <option value="Contents.Code.support" />
         </list>
       </option>
     </inspection_tool>

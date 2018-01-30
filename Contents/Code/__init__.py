@@ -12,6 +12,7 @@
 from __future__ import print_function
 
 import base64
+import glob
 import threading
 import time
 import json
@@ -19,14 +20,18 @@ import json
 import xml.etree.ElementTree as ET
 
 import os
-import xml
+import config
+
+import StringIO
+from subzero.lib.io import FileIO
+from zipfile import ZipFile, ZIP_DEFLATED
 
 import pychromecast
 from pychromecast.controllers.media import MediaController
 from pychromecast.controllers.plex import PlexController
 
 import log_helper
-from CustomContainer import MediaContainer, DeviceContainer, CastContainer
+from CustomContainer import MediaContainer, DeviceContainer, CastContainer, ZipObject
 
 # Dummy Imports for PyCharm
 
@@ -124,8 +129,8 @@ def ValidatePrefs():
     We add this dummy function, to avoid errors in the log
     """
 
-    dependencies = ['pychromecast', 'zeroconf', 'ifaddr']
-    # log_helper.register_logging_handler(dependencies, level="DEBUG")
+    dependencies = ['pychromecast', 'zeroconf']
+    log_helper.register_logging_handler(dependencies, level="DEBUG")
     return
 
 
@@ -209,6 +214,27 @@ def Rescan():
     # Grab our response header?
     UpdateCache()
     return MainMenu(True)
+
+
+@route(PREFIX + '/logs')
+@route(PREFIX2 + '/logs')
+def DownloadLogs():
+    buff = StringIO.StringIO()
+    zip_archive = ZipFile(buff, mode='w', compression=ZIP_DEFLATED)
+    paths = get_log_paths()
+    if (paths[0] is not False) & (paths[1] is not False):
+        logs = sorted(glob.glob(paths[0] + '*')) + [paths[1]]
+        for path in logs:
+            Log.Debug("Trying to read path: " + path)
+            data = StringIO.StringIO()
+            data.write(FileIO.read(path))
+            zip_archive.writestr(os.path.basename(path), data.getvalue())
+
+        zip_archive.close()
+
+        return ZipObject(buff.getvalue())
+
+    Log.Debug("No log path found, foo.")
 
 
 @route(APP + '/play')
@@ -655,3 +681,24 @@ def player_string(values):
     Log.Debug("Player String: " + JSON.StringFromObject(requestArray))
 
     return requestArray
+
+
+def get_log_paths():
+    # find log handler
+    server_log_path = False
+    plugin_log_path = False
+    for handler in Core.log.handlers:
+        if getattr(getattr(handler, "__class__"), "__name__") in (
+                'FileHandler', 'RotatingFileHandler', 'TimedRotatingFileHandler'):
+            plugin_log_file = handler.baseFilename
+            if os.path.isfile(os.path.realpath(plugin_log_file)):
+                plugin_log_path = plugin_log_file
+                Log.Debug("Found a plugin path: " + plugin_log_path)
+
+            if plugin_log_file:
+                server_log_file = os.path.realpath(os.path.join(plugin_log_file, "../../Plex Media Server.log"))
+                if os.path.isfile(server_log_file):
+                    server_log_path = server_log_file
+                    Log.Debug("Found a server log path: " + server_log_path)
+
+    return [plugin_log_path,server_log_path]

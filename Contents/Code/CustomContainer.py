@@ -4,6 +4,7 @@ For each container type you want to create, specify self.name, and an optional l
 accpetable attributes.
 
 """
+import datetime
 
 ObjectClass = getattr(getattr(Redirect, "_object_class"), "__bases__")[0]
 
@@ -125,4 +126,14 @@ class StatusContainer(CustomContainer):
         self.name = "Status"
         CustomContainer.__init__(self)
 
+class ZipObject(ObjectClass):
+    def __init__(self, data):
+        ObjectClass.__init__(self, "")
+        self.zipdata = data
+        self.SetHeader("Content-Type", "application/zip")
 
+    def Content(self):
+        self.SetHeader("Content-Disposition",
+                       'attachment; filename="' + datetime.datetime.now().strftime("Logs_%y%m%d_%H-%M-%S.zip")
+                       + '"')
+        return self.zipdata
