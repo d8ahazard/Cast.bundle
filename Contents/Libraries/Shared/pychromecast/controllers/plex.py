@@ -2,6 +2,7 @@
 Controller to interface with the Plex-app.
 """
 import json
+from urlparse import urlparse
 
 from . import BaseController
 from ..config import APP_PLEX
@@ -96,9 +97,10 @@ class PlexController(BaseController):
         else:
             tv = False
         # TODO: Get the play queue type.
-
-        address = params['Serveruri'].split(":")[1]
-        port = params['Serveruri'].split(":")[2]
+        o = urlparse(params['Serveruri'])
+        protocol = o.scheme
+        address = o.hostname
+        port = o.port
 
         msg = {
           "type": "LOAD",
@@ -127,7 +129,7 @@ class PlexController(BaseController):
                 "version": "1.11.0.4666",
                 "myPlexSubscription": True,
                 "isVerifiedHostname": True,
-                "protocol": "https",
+                "protocol": protocol,
                 "address": address,
                 "port": port,
                 "accessToken": params["Token"]
@@ -140,7 +142,7 @@ class PlexController(BaseController):
                 "version": "1.11.0.4666",
                 "myPlexSubscription": True,
                 "isVerifiedHostname": True,
-                "protocol": "https",
+                "protocol": protocol,
                 "address": address,
                 "port": port,
                 "accessToken": params["Token"]
