@@ -454,11 +454,6 @@ class SocketClient(threading.Thread):
         # route message to handlers
         if message.namespace in self._handlers:
 
-            # debug messages
-            if message.namespace != NS_HEARTBEAT:
-                self.logger.debug(
-                    "Received: %s", _message_to_string(message, data))
-
             # message handlers
             try:
                 handled = \
@@ -908,7 +903,7 @@ class ReceiverController(BaseController):
         is_new_app = self.app_id != status.app_id and self.app_to_launch
         self.status = status
 
-        self.logger.debug("Received status: %s", self.status)
+        #self.logger.debug("Received status: %s", self.status)
         self._report_status()
 
         if is_new_app and self.app_to_launch == self.app_id:

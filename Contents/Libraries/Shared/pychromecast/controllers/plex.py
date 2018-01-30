@@ -1,6 +1,8 @@
 """
 Controller to interface with the Plex-app.
 """
+import json
+
 from . import BaseController
 from ..config import APP_PLEX
 
@@ -153,7 +155,7 @@ class PlexController(BaseController):
           "currentTime": params['Offset'],
           "customData": None
         }
-
+        self.logger.debug("(DH) Sending message: " + json.dumps(msg))
         self.send_message(msg, inc_session_id=True)
         self.namespace = "urn:x-cast:plex"
         self.last_message = msg
@@ -161,6 +163,7 @@ class PlexController(BaseController):
     def receive_message(self, message, data):
         """ Called when a media message is received. """
         if data[MESSAGE_TYPE] == TYPE_MEDIA_STATUS:
+            self.logger.debug("(DH) MESSAGE RECEIVED: " + data)
             return True
 
         else:

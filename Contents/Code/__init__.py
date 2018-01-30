@@ -129,7 +129,7 @@ def ValidatePrefs():
     We add this dummy function, to avoid errors in the log
     """
 
-    dependencies = ['pychromecast', 'zeroconf']
+    dependencies = ['pychromecast']
     log_helper.register_logging_handler(dependencies, level="DEBUG")
     return
 
