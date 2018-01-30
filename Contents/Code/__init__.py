@@ -551,6 +551,24 @@ def fetch_devices(rescan=False):
         casts_string = Data.Load('device_json')
         casts = JSON.ObjectFromString(casts_string)
 
+    port = os.environ.get("PLEXSERVERPORT")
+    myurl = 'http://127.0.0.1:%s/clients' % port
+    Log.Debug("Gonna connect to %s" % myurl)
+    req = HTTP.Request(myurl)
+    req.load()
+    clientData = req.content
+    root = ET.fromstring(clientData)
+    for device in root.iter('Server'):
+        local_item = {
+            "name": device.get('name'),
+            "uri": device.get('host') + ":" + str(device.get('port')),
+            "status": "n/a",
+            "type": device.get('product'),
+            "app": "Plex Client",
+            "id": device.get('machineIdentifier')
+        }
+        casts.append(local_item)
+
     return casts
 
 
@@ -573,23 +591,6 @@ def scan_devices():
         data_array.append(cast_item)
 
     Log.Debug("Item count is " + str(len(data_array)))
-    port = os.environ.get("PLEXSERVERPORT")
-    myurl = 'http://127.0.0.1:%s/clients' % port
-    Log.Debug("Gonna connect to %s" % myurl)
-    req = HTTP.Request(myurl)
-    req.load()
-    clientData = req.content
-    root = ET.fromstring(clientData)
-    for device in root.iter('Server'):
-        local_item = {
-            "name": device.get('name'),
-            "uri": device.get('host') + ":" + str(device.get('port')),
-            "status": "n/a",
-            "type": device.get('product'),
-            "app": "Plex Client",
-            "id": device.get('machineIdentifier')
-        }
-        data_array.append(local_item)
 
     Log.Debug("Item count is " + str(len(data_array)))
     cast_string = JSON.StringFromObject(data_array)
