@@ -41,7 +41,6 @@ from CustomContainer import MediaContainer, DeviceContainer, CastContainer, ZipO
 # from Framework.docutils import Data
 
 NAME = 'Cast'
-VERSION = '1.1.100'
 VERSION = '1.1.101'
 PREFIX = '/applications/Cast'
 PREFIX2 = '/chromecast'
@@ -130,7 +129,7 @@ def ValidatePrefs():
     We add this dummy function, to avoid errors in the log
     """
 
-    dependencies = ['pychromecast']
+    dependencies = ['pychromecast','zeroconf','ifaddr']
     log_helper.register_logging_handler(dependencies, level="DEBUG")
     return
 
