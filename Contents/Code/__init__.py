@@ -60,17 +60,23 @@ def Start():
     ObjectContainer.title1 = NAME
     DirectoryObject.thumb = R(ICON)
     HTTP.CacheTime = 5
-    time = 5 * 60
     if Data.Exists('device_json') is not True: UpdateCache()
     ValidatePrefs()
+    CacheTimer()
+
+
+def CacheTimer():
+    Log.Debug("Starting cache Timer")
+    time = 5 * 60
+    threading.Timer(time, CacheTimer).start()
     UpdateCache()
-    threading.Timer(time, UpdateCache).start()
 
 
 # This doesn't actually ever seem to run, so we're gonna call a threading timer...
 def UpdateCache():
     Log.Debug("UpdateCache called")
     scan_devices()
+
 
 
 @handler(PREFIX, NAME)
@@ -139,6 +145,7 @@ def ValidatePrefs():
 @route(PREFIX2 + '/devices')
 def Devices():
     """
+
     Endpoint to scan LAN for cast devices
     """
     Log.Debug('Recieved a call to fetch cast devices')
@@ -584,7 +591,10 @@ def fetch_devices(rescan=False):
 
 def scan_devices():
     Log.Debug("Re-fetching devices")
-    casts = pychromecast.get_chromecasts(2, None, None, True)
+    start_time = time.time()
+    casts = pychromecast.get_chromecasts(None, None, None, True)
+
+    Log.Debug("Scan time is %s seconds." % (time.time() - start_time))
     data_array = []
     for cast in casts:
         cast_item = {
