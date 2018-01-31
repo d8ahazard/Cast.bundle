@@ -101,6 +101,12 @@ class PlexController(BaseController):
         protocol = o.scheme
         address = o.hostname
         port = o.port
+        if protocol == 'https':
+            verified = True
+        else:
+            verified = False
+
+        self.logger.debug("Protocol, address, port and verified are %s %s %s and %s", protocol, address, port, verified)
 
         msg = {
           "type": "LOAD",
@@ -128,7 +134,7 @@ class PlexController(BaseController):
                 "transcoderAudio": True,
                 "version": "1.11.0.4666",
                 "myPlexSubscription": True,
-                "isVerifiedHostname": True,
+                "isVerifiedHostname": verified,
                 "protocol": protocol,
                 "address": address,
                 "port": port,
@@ -141,7 +147,7 @@ class PlexController(BaseController):
                 "transcoderAudio": True,
                 "version": "1.11.0.4666",
                 "myPlexSubscription": True,
-                "isVerifiedHostname": True,
+                "isVerifiedHostname": verified,
                 "protocol": protocol,
                 "address": address,
                 "port": port,
