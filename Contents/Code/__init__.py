@@ -42,6 +42,7 @@ from CustomContainer import MediaContainer, DeviceContainer, CastContainer, ZipO
 
 NAME = 'Cast'
 VERSION = '1.1.100'
+VERSION = '1.1.101'
 PREFIX = '/applications/Cast'
 PREFIX2 = '/chromecast'
 APP = '/chromecast'
