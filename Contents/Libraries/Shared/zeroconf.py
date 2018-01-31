@@ -1627,7 +1627,7 @@ def normalize_interface_choice(choice):
     if choice is InterfaceChoice.Default:
         choice = ['0.0.0.0']
     elif choice is InterfaceChoice.All:
-        choice = get_all_addresses()
+        choice = ['0.0.0.0']
     return choice
 
 
