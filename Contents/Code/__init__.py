@@ -127,10 +127,11 @@ def ValidatePrefs():
     """
     Called by the framework every time a user changes the prefs
     We add this dummy function, to avoid errors in the log
+    and stuff.
     """
 
     dependencies = ['pychromecast','zeroconf','ifaddr']
-    log_helper.register_logging_handler(dependencies, level="DEBUG")
+    #log_helper.register_logging_handler(dependencies, level="DEBUG")
     return
 
 
