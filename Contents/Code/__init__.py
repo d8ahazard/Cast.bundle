@@ -268,6 +268,7 @@ def Play():
         host = client_uri[0]
         port = int(client_uri[1])
         pc = False
+        msg = "No message received"
         try:
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
@@ -275,6 +276,7 @@ def Play():
             pc = PlexController()
             cast.register_handler(pc)
             pc.play_media(values,type)
+            msg = base64.b64encode(str(cast.media_controller.status))
             cast.disconnect()
 
 
@@ -284,16 +286,11 @@ def Play():
         finally:
             if pc is not False:
                 status = "Success"
-                msg = pc.last_message
-                string = JSON.StringFromObject(msg)
-                Log.Debug("Message: " + string)
-                string = base64.b64encode(string)
-                Log.Debug("Cast status: " + status)
 
     oc = MediaContainer({
         'Name': 'Playback Status',
         'Status': status,
-        'Message': string
+        'Message': msg
     })
 
     return oc
@@ -305,6 +302,7 @@ def Cmd():
     Media control command(s).
 
     Plex-specific commands use the format:
+
 
     Required params:
     Uri
@@ -326,8 +324,10 @@ def Cmd():
     """
     Log.Debug('Recieved a call to control playback')
     chromecasts = fetch_devices()
-    params = sort_headers(['Uri', 'Cmd', 'Vol'])
-    response = "Missing paramaters"
+    params = sort_headers(['Uri', 'Cmd', 'Val'])
+    status = "Missing paramaters"
+    response = "Error"
+
     if params is not False:
         uri = params['Uri'].split(":")
         cast = pychromecast.Chromecast(uri[0], int(uri[1]))
@@ -335,10 +335,10 @@ def Cmd():
         pc = PlexController()
         Log.Debug("Handler namespace is %s" % pc.namespace)
         cast.register_handler(pc)
+
         Log.Debug("Handler namespace is %s" % pc.namespace)
 
         cmd = params['Cmd']
-        level = params["Vol"]
         Log.Debug("Command is " + cmd)
 
         if cmd == "play": pc.play()
@@ -347,14 +347,17 @@ def Cmd():
         # if cmd == "stepforward": pc.stepforward()
         if cmd == "stepbakward": pc.stepbackward()
         if cmd == "next": pc.next()
+        if cmd == "offset": pc.seek(params["Val"])
         # TODO: See if we can make plexcontroller find it's registered cast automagically
         if cmd == "previous": pc.previous()
         if cmd == "mute": pc.mute(cast, True)
         if cmd == "unmute": pc.mute(cast, False)
-        if cmd == "volume": pc.set_volume(level)
+        if cmd == "volume": pc.set_volume(params["Val"])
         if cmd == "voldown": pc.volume_down(cast)
         if cmd == "volup": pc.volume_up(cast)
-
+        status = str(cast.media_controller.status)
+        status = base64.b64encode(status)
+        Log.Debug("Status received: " + status)
         cast.disconnect()
         response = "Command successful"
     # Create a dummy container to return, in order to make
@@ -363,6 +366,7 @@ def Cmd():
     # what you want to return
     oc = ObjectContainer(
         title1=response,
+         title2=status,
         no_cache=True,
         no_history=True)
     return oc
