@@ -78,7 +78,6 @@ def UpdateCache():
     scan_devices()
 
 
-
 @handler(PREFIX, NAME)
 @handler(PREFIX2, NAME)
 @route(PREFIX + '/MainMenu')
@@ -250,7 +249,6 @@ def DownloadLogs():
         view_group="Details")
 
 
-
 @route(APP + '/play')
 def Play():
     """
@@ -261,7 +259,7 @@ def Play():
               'Username', "Token", "Queueid"]
     values = sort_headers(params, True)
     status = "Missing required headers"
-    string = status
+    msg = status
     if values is not False:
         Log.Debug("Holy crap, we have all the headers we need.")
         client_uri = values['Uri'].split(":")
@@ -275,9 +273,9 @@ def Play():
             type = cast.cast_type
             pc = PlexController()
             cast.register_handler(pc)
-            pc.play_media(values,type)
-            msg = base64.b64encode(str(cast.media_controller.status))
-            cast.disconnect()
+            pc.play_media(values, type)
+            #msg = base64.b64encode(str(cast.media_controller.status))
+            #cast.disconnect()
 
 
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
@@ -355,9 +353,9 @@ def Cmd():
         if cmd == "volume": pc.set_volume(params["Val"])
         if cmd == "voldown": pc.volume_down(cast)
         if cmd == "volup": pc.volume_up(cast)
-        status = str(cast.media_controller.status)
-        status = base64.b64encode(status)
-        Log.Debug("Status received: " + status)
+        #status = str(cast.media_controller.status)
+        #status = base64.b64encode(status)
+        #Log.Debug("Status received: " + status)
         cast.disconnect()
         response = "Command successful"
     # Create a dummy container to return, in order to make
@@ -366,7 +364,7 @@ def Cmd():
     # what you want to return
     oc = ObjectContainer(
         title1=response,
-         title2=status,
+        title2=status,
         no_cache=True,
         no_history=True)
     return oc
@@ -606,9 +604,11 @@ def fetch_devices(rescan=False):
 def scan_devices():
     Log.Debug("Re-fetching devices")
     start_time = time.time()
-    casts = pychromecast.get_chromecasts()
+    pychromecast.get_chromecasts(None, None, None, False, save_devices)
 
-    Log.Debug("Scan time is %s seconds." % (time.time() - start_time))
+
+def save_devices(casts):
+    Log.Debug("Save devices fired!")
     data_array = []
     for cast in casts:
         cast_item = {
@@ -628,7 +628,6 @@ def scan_devices():
     Data.Save('device_json', cast_string)
     last_scan = "Last Scan: " + time.strftime("%B %d %Y - %H:%M")
     Data.Save('last_scan', last_scan)
-    return data_array
 
 
 def getTimeDifferenceFromNow(TimeStart, TimeEnd):
@@ -735,4 +734,4 @@ def get_log_paths():
                     server_log_path = server_log_file
                     Log.Debug("Found a server log path: " + server_log_path)
 
-    return [plugin_log_path,server_log_path]
+    return [plugin_log_path, server_log_path]
