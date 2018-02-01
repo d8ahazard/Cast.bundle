@@ -136,8 +136,8 @@ def ValidatePrefs():
     and stuff.
     """
 
-    dependencies = ['pychromecast','zeroconf','ifaddr']
-    #log_helper.register_logging_handler(dependencies, level="DEBUG")
+    dependencies = ['pychromecast']
+    log_helper.register_logging_handler(dependencies, level="DEBUG")
     return
 
 
@@ -275,6 +275,7 @@ def Play():
             pc = PlexController()
             cast.register_handler(pc)
             pc.play_media(values,type)
+            cast.disconnect()
 
 
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
@@ -354,6 +355,7 @@ def Cmd():
         if cmd == "voldown": pc.volume_down(cast)
         if cmd == "volup": pc.volume_up(cast)
 
+        cast.disconnect()
         response = "Command successful"
     # Create a dummy container to return, in order to make
     # the framework happy
@@ -442,7 +444,10 @@ def Broadcast():
     if values is not False:
         do = False
         casts = fetch_devices()
+        disconnect = []
+        controllers = []
         try:
+
             for cast in casts:
                 if cast['type'] == "audio":
                     mc = MediaController()
@@ -451,12 +456,17 @@ def Broadcast():
                     cast = pychromecast.Chromecast(uri[0], int(uri[1]))
                     cast.wait()
                     cast.register_handler(mc)
-                    mc.play_media(values['Path'], 'audio/mp3')
+                    controllers.append(mc)
+                    disconnect.append(cast)
 
+            for mc in controllers:
+                mc.play_media(values['Path'], 'audio/mp3')
 
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')
         finally:
+            for cast in disconnect:
+                cast.disconnect()
             Log.Debug("We have a cast")
 
     else:
@@ -592,7 +602,7 @@ def fetch_devices(rescan=False):
 def scan_devices():
     Log.Debug("Re-fetching devices")
     start_time = time.time()
-    casts = pychromecast.get_chromecasts(None, None, None, True)
+    casts = pychromecast.get_chromecasts()
 
     Log.Debug("Scan time is %s seconds." % (time.time() - start_time))
     data_array = []

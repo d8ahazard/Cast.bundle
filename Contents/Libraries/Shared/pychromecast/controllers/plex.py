@@ -80,19 +80,18 @@ class PlexController(BaseController):
 
     def play_media(self, item,type):
         def app_launched_callback():
+            self.logger.debug("Application is launched")
             self.set_load(item, type)
 
         receiver_ctrl = self._socket_client.receiver_controller
-        receiver_ctrl.launch_app(self.app_id,
-                                 callback_function=app_launched_callback)
+        receiver_ctrl.launch_app(self.app_id,callback_function=app_launched_callback)
 
     def set_load(self, params,type):
+        self.logger.debug("Reached the load phase")
         self.namespace = "urn:x-cast:com.google.cast.media"
         playQueueID = params['Queueid']
         self.request_id += 1  # Update
-        # Session ID
         if (type == 'audio') | (type == 'group'):
-        # if params['Transcodervideo'] != "true":
             tv = True
         else:
             tv = False
