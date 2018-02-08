@@ -604,10 +604,7 @@ def fetch_devices(rescan=False):
 def scan_devices():
     Log.Debug("Re-fetching devices")
     start_time = time.time()
-    pychromecast.get_chromecasts(1, None, None, False, save_devices)
-
-
-def save_devices(casts):
+    casts = pychromecast.get_chromecasts(1, None, None, True)
     Log.Debug("Save devices fired!")
     data_array = []
     for cast in casts:
