@@ -3,7 +3,7 @@
 # See TODO doc for more details
 #
 # Made by
-# dane22....A Plex Community member
+# dane22 & digitalhigh....Plex Community members
 #
 ############################################################################
 
@@ -41,7 +41,7 @@ from CustomContainer import MediaContainer, DeviceContainer, CastContainer, ZipO
 # from Framework.docutils import Data
 
 NAME = 'Cast'
-VERSION = '1.1.101'
+VERSION = '1.1.102'
 PREFIX = '/applications/Cast'
 PREFIX2 = '/chromecast'
 APP = '/chromecast'
@@ -51,6 +51,7 @@ ICON_CAST_AUDIO = 'icon-cast_audio.png'
 ICON_CAST_VIDEO = 'icon-cast_video.png'
 ICON_CAST_GROUP = 'icon-cast_group.png'
 ICON_CAST_REFRESH = 'icon-cast_refresh.png'
+ICON_PLEX_CLIENT = 'icon-plex_client.png'
 TEST_CLIP = 'test.mp3'
 
 
@@ -66,8 +67,9 @@ def Start():
 
 
 def CacheTimer():
-    Log.Debug("Starting cache Timer")
-    time = 5 * 60
+    mins = 10
+    time = mins * 60
+    Log.Debug("Cache timer started, updating in %s minutes",mins)
     threading.Timer(time, CacheTimer).start()
     UpdateCache()
 
@@ -150,7 +152,6 @@ def Devices():
     Log.Debug('Recieved a call to fetch cast devices')
     # Grab our response header?
     casts = fetch_devices()
-
     mc = MediaContainer()
     for cast in casts:
         Log.Debug("Cast type is " + cast['type'])
@@ -200,6 +201,8 @@ def Resources():
         if type == "audio": icon = ICON_CAST_AUDIO
         if type == "cast": icon = ICON_CAST_VIDEO
         if type == "group": icon = ICON_CAST_GROUP
+        if cast['app'] == "Plex Client": icon = ICON_PLEX_CLIENT
+        Log.Debug("Type is %s",type)
         do = DirectoryObject(
             title=cast['name'],
             duration=cast['status'],
