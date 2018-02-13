@@ -129,4 +129,4 @@ def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
         log.debug("Caught an error: " + e.message)
     finally:
         if browser is not False:
-            browser.cancel()
+            stop_discovery(browser)

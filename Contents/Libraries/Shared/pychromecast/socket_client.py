@@ -223,6 +223,7 @@ class SocketClient(threading.Thread):
         tries = self.tries
 
         if self.socket is not None:
+            self.logger.debug("Closing socket before retry")
             self.socket.close()
             self.socket = None
 
@@ -491,6 +492,7 @@ class SocketClient(threading.Thread):
             except Exception:  # pylint: disable=broad-except
                 pass
 
+        self.logger.debug("Closing socket on cleanup")
         self.socket.close()
         self._report_connection_status(
             ConnectionStatus(CONNECTION_STATUS_DISCONNECTED,
