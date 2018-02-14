@@ -30,6 +30,8 @@ import pychromecast
 from pychromecast.controllers.media import MediaController
 from pychromecast.controllers.plex import PlexController
 
+from lib import Plex
+
 import log_helper
 from CustomContainer import MediaContainer, DeviceContainer, CastContainer, ZipObject
 
@@ -53,6 +55,7 @@ ICON_CAST_GROUP = 'icon-cast_group.png'
 ICON_CAST_REFRESH = 'icon-cast_refresh.png'
 ICON_PLEX_CLIENT = 'icon-plex_client.png'
 TEST_CLIP = 'test.mp3'
+PLUGIN_IDENTIFIER = "com.plexapp.plugins.Cast"
 
 
 # Start function
@@ -64,6 +67,7 @@ def Start():
     if Data.Exists('device_json') is not True: UpdateCache()
     ValidatePrefs()
     CacheTimer()
+    RestartTimer()
 
 
 def CacheTimer():
@@ -72,6 +76,14 @@ def CacheTimer():
     Log.Debug("Cache timer started, updating in %s minutes",mins)
     threading.Timer(time, CacheTimer).start()
     UpdateCache()
+
+
+def RestartTimer():
+    hours = 10
+    time = hours * 60 * 60
+    temptime = 20
+    Log.Debug("Restart timer started, plugin will re-start in %s hours.",hours)
+    threading.Timer(time,DispatchRestart).start()
 
 
 # This doesn't actually ever seem to run, so we're gonna call a threading timer...
@@ -109,6 +121,13 @@ def MainMenu(Rescanned=False):
         title="Rescan Devices",
         thumb=R(ICON_CAST_REFRESH),
         key=Callback(Rescan))
+
+    oc.add(do)
+
+    do = DirectoryObject(
+        title="Advanced",
+        thumb=R(ICON_CAST_REFRESH),
+        key=Callback(AdvancedMenu))
 
     oc.add(do)
 
@@ -179,7 +198,7 @@ def Clients():
 
     return mc
 
-
+# FOO
 @route(APP + '/resources')
 @route(PREFIX2 + '/resources')
 def Resources():
@@ -608,6 +627,25 @@ def scan_devices():
     Log.Debug("Re-fetching devices")
     start_time = time.time()
     casts = pychromecast.get_chromecasts(1, None, None, True)
+    if len(casts) == 0:
+        if Data.Exists('restarts') is not True:
+            Data.Save('restarts',1)
+            Log.Debug("No cast devices found, we need to restart the plugin.")
+            DispatchRestart()
+        else:
+            restart_count = Data.Load('restarts')
+            if (restart_count >= 5):
+                Log.Debug("It's been an hour, trying to restart the plugin again")
+                Data.Remove('restarts')
+                DispatchRestart()
+            else:
+                Log.Debug("Avoiding a restart in case it's not me, but you.")
+                restart_count += 1
+                Data.Save('restarts',restart_count)
+
+    else:
+        if Data.Exists('restarts') is True: Data.Remove('restarts')
+
     Log.Debug("Save devices fired!")
     data_array = []
     for cast in casts:
@@ -735,3 +773,62 @@ def get_log_paths():
                     Log.Debug("Found a server log path: " + server_log_path)
 
     return [plugin_log_path, server_log_path]
+
+
+@route(PREFIX2 + '/advanced')
+def AdvancedMenu(header=None, message=None):
+    oc = ObjectContainer(header=header or "Internal stuff, pay attention!", message=message, no_cache=True,
+                                  no_history=True,
+                                  replace_parent=False, title2="Advanced")
+
+    oc.add(DirectoryObject(
+        key=Callback(TriggerRestart),
+        title="Restart the plugin",
+    ))
+
+    return oc
+
+
+def DispatchRestart():
+    Thread.CreateTimer(1.0, Restart)
+
+
+
+@route(PREFIX2 + '/advanced/restart/trigger')
+def TriggerRestart():
+    DispatchRestart()
+    oc = ObjectContainer(
+        title1="restarting",
+        no_cache=True,
+        no_history=True,
+        title_bar="Chromecast",
+        view_group="Details")
+
+    do = DirectoryObject(
+        title="Rescan Devices",
+        thumb=R(ICON_CAST_REFRESH),
+        key=Callback(Rescan))
+
+    oc.add(do)
+
+    do = DirectoryObject(
+        title="Devices",
+        thumb=R(ICON_CAST),
+        key=Callback(Resources))
+
+    oc.add(do)
+
+    do = DirectoryObject(
+        title="Broadcast",
+        thumb=R(ICON_CAST_AUDIO),
+        key=Callback(Broadcast))
+
+    oc.add(do)
+
+    return oc
+
+
+@route(PREFIX2 + '/advanced/restart/execute')
+def Restart():
+    Plex[":/plugins"].restart(PLUGIN_IDENTIFIER)
+
