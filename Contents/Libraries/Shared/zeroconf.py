@@ -1652,7 +1652,7 @@ def new_socket():
         except (OSError, socket.error) as err:
             # OSError on python 3, socket.error on python 2
             if not err.errno == errno.ENOPROTOOPT:
-                raise
+                raise err
 
     # OpenBSD needs the ttl and loop values for the IP_MULTICAST_TTL and
     # IP_MULTICAST_LOOP socket options as an unsigned char.
@@ -1713,7 +1713,7 @@ class Zeroconf(QuietLogger):
                     )
                     continue
                 else:
-                    raise
+                    raise e
 
             respond_socket = new_socket()
             respond_socket.setsockopt(

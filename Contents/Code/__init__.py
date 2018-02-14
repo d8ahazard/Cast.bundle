@@ -3,7 +3,7 @@
 # See TODO doc for more details
 #
 # Made by
-# dane22 & digitalhigh....Plex Community members
+# dane22 & digitalhigh...Plex Community members
 #
 ############################################################################
 
@@ -11,29 +11,22 @@
 
 from __future__ import print_function
 
-import base64
+import StringIO
 import glob
+import os
 import threading
 import time
-import json
-
 import xml.etree.ElementTree as ET
-
-import os
-import config
-
-import StringIO
-from subzero.lib.io import FileIO
 from zipfile import ZipFile, ZIP_DEFLATED
 
 import pychromecast
 from pychromecast.controllers.media import MediaController
 from pychromecast.controllers.plex import PlexController
-
-from lib import Plex
+from subzero.lib.io import FileIO
 
 import log_helper
 from CustomContainer import MediaContainer, DeviceContainer, CastContainer, ZipObject
+from lib import Plex
 
 # Dummy Imports for PyCharm
 
@@ -64,7 +57,9 @@ def Start():
     ObjectContainer.title1 = NAME
     DirectoryObject.thumb = R(ICON)
     HTTP.CacheTime = 5
-    if Data.Exists('device_json') is not True: UpdateCache()
+    if Data.Exists('device_json') is not True:
+        UpdateCache()
+
     ValidatePrefs()
     CacheTimer()
     RestartTimer()
@@ -72,21 +67,19 @@ def Start():
 
 def CacheTimer():
     mins = 10
-    time = mins * 60
-    Log.Debug("Cache timer started, updating in %s minutes",mins)
-    threading.Timer(time, CacheTimer).start()
+    update_time = mins * 60
+    Log.Debug("Cache timer started, updating in %s minutes", mins)
+    threading.Timer(update_time, CacheTimer).start()
     UpdateCache()
 
 
 def RestartTimer():
     hours = 10
-    time = hours * 60 * 60
-    temptime = 20
-    Log.Debug("Restart timer started, plugin will re-start in %s hours.",hours)
-    threading.Timer(time,DispatchRestart).start()
+    restart_time = hours * 60 * 60
+    Log.Debug("Restart timer started, plugin will re-start in %s hours.", hours)
+    threading.Timer(restart_time, DispatchRestart).start()
 
 
-# This doesn't actually ever seem to run, so we're gonna call a threading timer...
 def UpdateCache():
     Log.Debug("UpdateCache called")
     scan_devices()
@@ -97,15 +90,14 @@ def UpdateCache():
 @route(PREFIX + '/MainMenu')
 @route(PREFIX2)
 def MainMenu(Rescanned=False):
-    casts = fetch_devices()
-
     """
     Main menu
     """
     Log.Debug("**********  Starting MainMenu  **********")
     title = NAME + " - " + VERSION
-    if Data.Exists('last_scan'): title = NAME + " - " + Data.Load('last_scan')
-    # TODO: Build that list of cast devices and show them here?
+    if Data.Exists('last_scan'):
+        title = NAME + " - " + Data.Load('last_scan')
+
     oc = ObjectContainer(
         title1=title,
         no_cache=True,
@@ -198,6 +190,7 @@ def Clients():
 
     return mc
 
+
 # FOO
 @route(APP + '/resources')
 @route(PREFIX2 + '/resources')
@@ -215,13 +208,17 @@ def Resources():
         view_group="Details")
 
     for cast in casts:
-        type = cast['type']
+        cast_type = cast['type']
         icon = ICON_CAST
-        if type == "audio": icon = ICON_CAST_AUDIO
-        if type == "cast": icon = ICON_CAST_VIDEO
-        if type == "group": icon = ICON_CAST_GROUP
-        if cast['app'] == "Plex Client": icon = ICON_PLEX_CLIENT
-        Log.Debug("Type is %s",type)
+        if cast_type == "audio":
+            icon = ICON_CAST_AUDIO
+        if cast_type == "cast":
+            icon = ICON_CAST_VIDEO
+        if cast_type == "group":
+            icon = ICON_CAST_GROUP
+        if cast['app'] == "Plex Client":
+            icon = ICON_PLEX_CLIENT
+        Log.Debug("Type is %s", type)
         do = DirectoryObject(
             title=cast['name'],
             duration=cast['status'],
@@ -292,13 +289,10 @@ def Play():
         try:
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
-            type = cast.cast_type
+            cast_type = cast.cast_type
             pc = PlexController()
             cast.register_handler(pc)
-            pc.play_media(values, type)
-            #msg = base64.b64encode(str(cast.media_controller.status))
-            #cast.disconnect()
-
+            pc.play_media(values, cast_type)
 
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')
@@ -343,7 +337,6 @@ def Cmd():
 
     """
     Log.Debug('Recieved a call to control playback')
-    chromecasts = fetch_devices()
     params = sort_headers(['Uri', 'Cmd', 'Val'])
     status = "Missing paramaters"
     response = "Error"
@@ -361,29 +354,32 @@ def Cmd():
         cmd = params['Cmd']
         Log.Debug("Command is " + cmd)
 
-        if cmd == "play": pc.play()
-        if cmd == "pause": pc.pause()
-        if cmd == "stop": pc.stop()
-        # if cmd == "stepforward": pc.stepforward()
-        if cmd == "stepbakward": pc.stepbackward()
-        if cmd == "next": pc.next()
-        if cmd == "offset": pc.seek(params["Val"])
-        # TODO: See if we can make plexcontroller find it's registered cast automagically
-        if cmd == "previous": pc.previous()
-        if cmd == "mute": pc.mute(cast, True)
-        if cmd == "unmute": pc.mute(cast, False)
-        if cmd == "volume": pc.set_volume(params["Val"])
-        if cmd == "voldown": pc.volume_down(cast)
-        if cmd == "volup": pc.volume_up(cast)
-        #status = str(cast.media_controller.status)
-        #status = base64.b64encode(status)
-        #Log.Debug("Status received: " + status)
+        if cmd == "play":
+            pc.play()
+        if cmd == "pause":
+            pc.pause()
+        if cmd == "stop":
+            pc.stop()
+        if cmd == "next":
+            pc.next()
+        if cmd == "offset":
+            pc.seek(params["Val"])
+        if cmd == "previous":
+            pc.previous()
+        if cmd == "mute":
+            pc.mute(cast, True)
+        if cmd == "unmute":
+            pc.mute(cast, False)
+        if cmd == "volume":
+            pc.set_volume(params["Val"])
+        if cmd == "voldown":
+            pc.volume_down(cast)
+        if cmd == "volup":
+            pc.volume_up(cast)
+
         cast.disconnect()
         response = "Command successful"
-    # Create a dummy container to return, in order to make
-    # the framework happy
-    # Can be used if needed to get a return value, by replacing title var with
-    # what you want to return
+
     oc = ObjectContainer(
         title1=response,
         title2=status,
@@ -395,8 +391,7 @@ def Cmd():
 @route(APP + '/audio')
 def Audio():
     """
-    Endpoint to play media.
-
+    Endpoint to cast audio to a specific device.
     """
 
     Log.Debug('Recieved a call to play an audio clip.')
@@ -431,8 +426,8 @@ def Audio():
 @route(APP + '/broadcast/test')
 def Test():
     values = {'Path': R(TEST_CLIP)}
-    status = "Test failed."
     casts = fetch_devices()
+    status = "Test successful!"
     try:
         for cast in casts:
             if cast['type'] == "audio":
@@ -444,12 +439,11 @@ def Test():
                 cast.register_handler(mc)
                 mc.play_media(values['Path'], 'audio/mp3')
 
-
     except pychromecast.LaunchError, pychromecast.PyChromecastError:
         Log.Debug('Error connecting to host.')
+        status = "Test failed!"
     finally:
         Log.Debug("We have a cast")
-    status = "Test successful!"
 
     oc = ObjectContainer(
         title1=status,
@@ -461,6 +455,9 @@ def Test():
 
 @route(APP + '/broadcast')
 def Broadcast():
+    """
+    Send audio to *all* cast devices on the network
+    """
     Log.Debug('Recieved a call to broadcast an audio clip.')
     params = ['Path']
     values = sort_headers(params, True)
@@ -505,23 +502,22 @@ def Broadcast():
         no_cache=True,
         no_history=True)
 
-    if do is not False: oc.add(do)
+    if do is not False:
+        oc.add(do)
 
     return oc
 
 
 @route(APP + '/status')
 @route(APP + '/resources/status')
-def Status(input=False):
+def Status(input_name=False):
     """
     Fetch player status
     TODO: Figure out how to parse and return additional data here
-
     """
     uri = "FOOBAR"
     name = "FOOBAR"
-    cc = []
-    showAll = False
+    show_all = False
     Log.Debug('Trying to get cast device status here')
     for key, value in Request.Headers.items():
         Log.Debug("Header key %s is %s", key, value)
@@ -533,15 +529,17 @@ def Status(input=False):
             Log.Debug("X-Plex-Clientname: " + value)
             name = value
 
-    if input is not False: name = input
-    if uri == name: showAll = True
+    if input_name is not False:
+        name = input_name
+    if uri == name:
+        show_all = True
 
     chromecasts = fetch_devices()
     devices = []
 
     for chromecast in chromecasts:
         cc = False
-        if showAll is not True:
+        if show_all is not True:
             if chromecast['name'] == name:
                 Log.Debug("Found a matching chromecast: " + name)
                 cc = chromecast
@@ -571,7 +569,7 @@ def Status(input=False):
             Log.Debug("Waiting for device")
             cc.wait(2)
             Log.Debug("Device is here!")
-            if cc.is_idle != True:
+            if not cc.is_idle:
                 Log.Debug("We have a non-idle cast")
                 status = "Running" + cc.app_display_name()
             else:
@@ -579,7 +577,7 @@ def Status(input=False):
 
             do = DirectoryObject(
                 title=device['name'],
-                duration=device['status'],
+                duration=status,
                 tagline=device['uri'],
                 summary=device['app']
             )
@@ -588,9 +586,8 @@ def Status(input=False):
     return oc
 
 
-def fetch_devices(rescan=False):
-    has_devices = Data.Exists('device_json')
-    if has_devices == False:
+def fetch_devices():
+    if not Data.Exists('device_json'):
         Log.Debug("No cached data exists, re-scanning.")
         casts = scan_devices()
 
@@ -604,8 +601,8 @@ def fetch_devices(rescan=False):
     Log.Debug("Gonna connect to %s" % myurl)
     req = HTTP.Request(myurl)
     req.load()
-    clientData = req.content
-    root = ET.fromstring(clientData)
+    client_data = req.content
+    root = ET.fromstring(client_data)
     for device in root.iter('Server'):
         local_item = {
             "name": device.get('name'),
@@ -625,26 +622,27 @@ def fetch_devices(rescan=False):
 
 def scan_devices():
     Log.Debug("Re-fetching devices")
-    start_time = time.time()
     casts = pychromecast.get_chromecasts(1, None, None, True)
     if len(casts) == 0:
         if Data.Exists('restarts') is not True:
-            Data.Save('restarts',1)
+            Data.Save('restarts', 1)
             Log.Debug("No cast devices found, we need to restart the plugin.")
             DispatchRestart()
         else:
             restart_count = Data.Load('restarts')
-            if (restart_count >= 5):
+            if restart_count >= 5:
                 Log.Debug("It's been an hour, trying to restart the plugin again")
                 Data.Remove('restarts')
                 DispatchRestart()
             else:
                 Log.Debug("Avoiding a restart in case it's not me, but you.")
                 restart_count += 1
-                Data.Save('restarts',restart_count)
+                Data.Save('restarts', restart_count)
 
     else:
-        if Data.Exists('restarts') is True: Data.Remove('restarts')
+        Log.Debug("Okay, we have cast devices, no need to get all postal up in this mutha...")
+        if Data.Exists('restarts'):
+            Data.Remove('restarts')
 
     Log.Debug("Save devices fired!")
     data_array = []
@@ -666,32 +664,33 @@ def scan_devices():
     Data.Save('device_json', cast_string)
     last_scan = "Last Scan: " + time.strftime("%B %d %Y - %H:%M")
     Data.Save('last_scan', last_scan)
+    return data_array
 
 
-def getTimeDifferenceFromNow(TimeStart, TimeEnd):
-    timeDiff = TimeEnd - TimeStart
-    return timeDiff.total_seconds() / 60
+def getTimeDifferenceFromNow(time_start, time_end):
+    time_diff = time_end - time_start
+    return time_diff.total_seconds() / 60
 
 
-def sort_headers(list, strict=False):
+def sort_headers(header_list, strict=False):
     returns = {}
     for key, value in Request.Headers.items():
         Log.Debug("Header key %s is %s", key, value)
-        for item in list:
+        for item in header_list:
             if key in ("X-Plex-" + item, item):
                 Log.Debug("We have a " + item)
                 returns[item] = unicode(value)
-                list.remove(item)
+                header_list.remove(item)
 
-    if strict == True:
-        len2 = len(list)
+    if strict:
+        len2 = len(header_list)
         if len2 == 0:
             Log.Debug("We have all of our values: " + JSON.StringFromObject(returns))
             return returns
 
         else:
             Log.Error("Sorry, parameters are missing.")
-            for item in list:
+            for item in header_list:
                 Log.Error("Missing " + item)
             return False
     else:
@@ -715,7 +714,7 @@ def player_string(values):
     username = values['Username']
     true = "true"
     false = "false"
-    requestArray = {
+    request_array = {
         "type": 'LOAD',
         'requestId': request_id,
         'media': {
@@ -749,9 +748,9 @@ def player_string(values):
             'currentTime': 0
         }
     }
-    Log.Debug("Player String: " + JSON.StringFromObject(requestArray))
+    Log.Debug("Player String: " + JSON.StringFromObject(request_array))
 
-    return requestArray
+    return request_array
 
 
 def get_log_paths():
@@ -778,8 +777,8 @@ def get_log_paths():
 @route(PREFIX2 + '/advanced')
 def AdvancedMenu(header=None, message=None):
     oc = ObjectContainer(header=header or "Internal stuff, pay attention!", message=message, no_cache=True,
-                                  no_history=True,
-                                  replace_parent=False, title2="Advanced")
+                         no_history=True,
+                         replace_parent=False, title2="Advanced")
 
     oc.add(DirectoryObject(
         key=Callback(TriggerRestart),
@@ -791,7 +790,6 @@ def AdvancedMenu(header=None, message=None):
 
 def DispatchRestart():
     Thread.CreateTimer(1.0, Restart)
-
 
 
 @route(PREFIX2 + '/advanced/restart/trigger')
@@ -831,4 +829,3 @@ def TriggerRestart():
 @route(PREFIX2 + '/advanced/restart/execute')
 def Restart():
     Plex[":/plugins"].restart(PLUGIN_IDENTIFIER)
-

@@ -8,25 +8,23 @@ Without him this would not have been possible.
 # Pylint does not understand the protobuf objects correctly
 # pylint: disable=no-member
 
+import errno
+import json
 import logging
 import select
 import socket
 import ssl
-import json
+import struct
+import sys
 import threading
 import time
 from collections import namedtuple
 from struct import pack, unpack
-import sys
-
-import struct
-
-import errno
 
 from . import cast_channel_pb2
-from .dial import CAST_TYPE_CHROMECAST, CAST_TYPE_AUDIO, CAST_TYPE_GROUP
 from .controllers import BaseController
 from .controllers.media import MediaController
+from .dial import CAST_TYPE_CHROMECAST, CAST_TYPE_AUDIO, CAST_TYPE_GROUP
 from .error import (
     ChromecastConnectionError,
     UnsupportedNamespace,
@@ -121,17 +119,14 @@ def _is_ssl_timeout(exc):
 NetworkAddress = namedtuple('NetworkAddress',
                             ['address', 'port'])
 
-
 ConnectionStatus = namedtuple('ConnectionStatus',
                               ['status', 'address'])
-
 
 CastStatus = namedtuple('CastStatus',
                         ['is_active_input', 'is_stand_by', 'volume_level',
                          'volume_muted', 'app_id', 'display_name',
                          'namespaces', 'session_id', 'transport_id',
                          'status_text'])
-
 
 LaunchFailure = namedtuple('LaunchStatus',
                            ['reason', 'app_id', 'request_id'])
@@ -276,12 +271,15 @@ class SocketClient(threading.Thread):
                 self._report_connection_status(
                     ConnectionStatus(CONNECTION_STATUS_FAILED,
                                      NetworkAddress(self.host, self.port)))
+
+                # Only sleep if we have another retry remaining
                 if tries and tries > 1:
                     retry_log_fun("Failed to connect, retrying in %.1fs",
                                   self.retry_wait)
                     retry_log_fun = self.logger.debug
 
                     time.sleep(self.retry_wait)
+
                 if tries:
                     tries -= 1
         else:
@@ -896,7 +894,7 @@ class ReceiverController(BaseController):
             app_data.get(SESSION_ID),
             app_data.get('transportId'),
             app_data.get('statusText', '')
-            )
+        )
         return status
 
     def _process_get_status(self, data):
@@ -968,7 +966,6 @@ class ReceiverController(BaseController):
         self._report_status()
 
         self._status_listeners[:] = []
-
 
 
 def new_socket():

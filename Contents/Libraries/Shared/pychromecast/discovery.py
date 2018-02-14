@@ -1,10 +1,10 @@
 """Discovers Chromecasts on the network using mDNS/zeroconf."""
+import logging
+import socket
 from uuid import UUID
 
 import six
-from zeroconf import ServiceBrowser, Zeroconf, BadTypeInNameException
-import logging
-
+from zeroconf import ServiceBrowser, Zeroconf, BadTypeInNameException, NonUniqueNameException
 
 DISCOVER_TIMEOUT = 5
 
@@ -12,8 +12,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.NullHandler())
 
+
 class CastListener(object):
     """Zeroconf Cast Services collection."""
+
     def __init__(self, callback=None):
         self.services = {}
         self.callback = callback
@@ -94,11 +96,10 @@ def start_discovery(callback=None):
     sb = False
     try:
         sb = ServiceBrowser(Zeroconf(), "_googlecast._tcp.local.", listener)
-    except Exception as e:
-        log.error("Error creating service browser: " + e.message)
+    except (BadTypeInNameException, NotImplementedError, OSError, socket.error, NonUniqueNameException):
+        sb = False
     finally:
         return listener, sb
-
 
 
 def stop_discovery(browser):
