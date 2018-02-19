@@ -74,7 +74,7 @@ def CacheTimer():
 
 
 def RestartTimer():
-    hours = 10
+    hours = 4
     restart_time = hours * 60 * 60
     Log.Debug("Restart timer started, plugin will re-start in %s hours.", hours)
     threading.Timer(restart_time, DispatchRestart).start()

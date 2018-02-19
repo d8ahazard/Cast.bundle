@@ -4,7 +4,7 @@ import socket
 from uuid import UUID
 
 import six
-from zeroconf import ServiceBrowser, Zeroconf, BadTypeInNameException, NonUniqueNameException
+import zeroconf
 
 DISCOVER_TIMEOUT = 5
 
@@ -93,13 +93,19 @@ def start_discovery(callback=None):
     """
     log.debug("Discovery called")
     listener = CastListener(callback)
-    sb = False
+    service_browser = False
     try:
-        sb = ServiceBrowser(Zeroconf(), "_googlecast._tcp.local.", listener)
-    except (BadTypeInNameException, NotImplementedError, OSError, socket.error, NonUniqueNameException):
-        sb = False
-    finally:
-        return listener, sb
+        service_browser = zeroconf.ServiceBrowser(zeroconf.Zeroconf(),
+                                                  "_googlecast._tcp.local.",
+                                                  listener)
+    except (zeroconf.BadTypeInNameException,
+            NotImplementedError,
+            OSError,
+            socket.error,
+            zeroconf.NonUniqueNameException):
+        pass
+
+    return listener, service_browser
 
 
 def stop_discovery(browser):
@@ -126,8 +132,8 @@ def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
         discover_complete.wait(timeout)
 
         return listener.devices
-    except Exception as e:
-        log.debug("Caught an error: " + e.message)
+    except Exception:  # pylint: disable=broad-except
+        log.debug("An exception occurred!")
     finally:
         if browser is not False:
             stop_discovery(browser)
