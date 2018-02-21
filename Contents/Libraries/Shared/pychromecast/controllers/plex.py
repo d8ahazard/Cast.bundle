@@ -122,7 +122,7 @@ class PlexController(BaseController):
               "playQueueType": params['Contenttype'],  #TODO: GET THIS RIGHT
               "providerIdentifier": "com.plexapp.plugins.library",
               "containerKey": "/playQueues/{}?own=1".format(playQueueID),
-              "offset": params['Offset'],
+              "offset": int(params['Offset']),
               "directPlay": True,
               "directStream": True,
               "audioBoost": 100,
@@ -136,7 +136,7 @@ class PlexController(BaseController):
                 "isVerifiedHostname": verified,
                 "protocol": protocol,
                 "address": address,
-                "port": port,
+                "port": str(port),
                 "accessToken": params["Token"]
               },
               "primaryServer": {
@@ -144,22 +144,22 @@ class PlexController(BaseController):
                 "transcoderVideo": True,
                 "transcoderVideoRemuxOnly": False,
                 "transcoderAudio": True,
-                "version": "1.11.0.4666",
+                "version": "1.11.3.4803",
                 "myPlexSubscription": True,
                 "isVerifiedHostname": verified,
                 "protocol": protocol,
                 "address": address,
-                "port": port,
+                "port": str(port),
                 "accessToken": params["Token"]
               },
               "user": {
-                "username": {"username": params["Username"]}
+                "username": params["Username"]
               }
             }
           },
           "activeTrackIds":None,
           "autoplay": True,
-          "currentTime": params['Offset'],
+          "currentTime": int(params['Offset']),
           "customData": None
         }
         self.logger.debug("(DH) Sending message: " + json.dumps(msg))
