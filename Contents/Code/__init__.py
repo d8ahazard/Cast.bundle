@@ -66,7 +66,7 @@ def Start():
 
 
 def CacheTimer():
-    mins = 10
+    mins = 60
     update_time = mins * 60
     Log.Debug("Cache timer started, updating in %s minutes", mins)
     threading.Timer(update_time, CacheTimer).start()
@@ -232,6 +232,7 @@ def Resources():
 
 
 @route(APP + '/rescan')
+@route(PREFIX2 + '/rescan')
 def Rescan():
     """
     Endpoint to scan LAN for cast devices
@@ -292,8 +293,7 @@ def Play():
             cast_type = cast.cast_type
             pc = PlexController()
             cast.register_handler(pc)
-            pc.play_media(values, cast_type)
-
+            pc.play_media(values, cast_type,log_data)
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')
             status = "Error"
@@ -309,6 +309,9 @@ def Play():
 
     return oc
 
+
+def log_data(data):
+    Log.Debug("Is there data?? " + JSON.StringFromObject(data))
 
 @route(APP + '/cmd')
 def Cmd():
@@ -509,7 +512,7 @@ def Broadcast():
 
 
 @route(APP + '/status')
-@route(APP + '/resources/status')
+@route(PREFIX2 + '/resources/status')
 def Status(input_name=False):
     """
     Fetch player status
@@ -569,6 +572,10 @@ def Status(input_name=False):
             Log.Debug("Waiting for device")
             cc.wait(2)
             Log.Debug("Device is here!")
+            pc = PlexController()
+            cc.register_handler(pc)
+            raw_status = pc.plex_status()
+            Log.Debug("Did we get it?!?! %s",raw_status)
             if not cc.is_idle:
                 Log.Debug("We have a non-idle cast")
                 status = "Running" + cc.app_display_name()
@@ -619,11 +626,25 @@ def fetch_devices():
 
 # Scan our devices and save them to cache.
 # This should NEVER be called from an endpoint...we don't have the time
+# Foooo
 
 def scan_devices():
     Log.Debug("Re-fetching devices")
     casts = pychromecast.get_chromecasts(1, None, None, True)
-    if len(casts) == 0:
+    data_array = []
+    for cast in casts:
+        cast_item = {
+            "uri": cast.uri,
+            "name": cast.name,
+            "status": cast.is_idle,
+            "type": cast.cast_type,
+            "app": cast.app_display_name,
+            'id': cast.uri
+        }
+        data_array.append(cast_item)
+
+    Log.Debug("Cast length is %s", str(len(data_array)))
+    if len(data_array) == 0:
         if Data.Exists('restarts') is not True:
             Data.Save('restarts', 1)
             Log.Debug("No cast devices found, we need to restart the plugin.")
@@ -643,21 +664,6 @@ def scan_devices():
         Log.Debug("Okay, we have cast devices, no need to get all postal up in this mutha...")
         if Data.Exists('restarts'):
             Data.Remove('restarts')
-
-    Log.Debug("Save devices fired!")
-    data_array = []
-    for cast in casts:
-        cast_item = {
-            "uri": cast.uri,
-            "name": cast.name,
-            "status": cast.is_idle,
-            "type": cast.cast_type,
-            "app": cast.app_display_name,
-            'id': cast.uri
-        }
-        data_array.append(cast_item)
-
-    Log.Debug("Item count is " + str(len(data_array)))
 
     Log.Debug("Item count is " + str(len(data_array)))
     cast_string = JSON.StringFromObject(data_array)
