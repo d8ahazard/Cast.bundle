@@ -148,7 +148,7 @@ def ValidatePrefs():
     and stuff.
     """
 
-    dependencies = ['pychromecast']
+    dependencies = ['pychromecast','zeroconf']
     log_helper.register_logging_handler(dependencies, level="DEBUG")
     return
 
