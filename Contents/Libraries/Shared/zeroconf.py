@@ -1586,7 +1586,7 @@ class ZeroconfServiceTypes(object):
         pass
 
     @classmethod
-    def find(cls, zc=None, timeout=5, interfaces=InterfaceChoice.All):
+    def find(cls, zc=None, timeout=5, interfaces=InterfaceChoice.Default):
         """
         Return all of the advertised services on any local networks.
 
