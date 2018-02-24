@@ -1180,7 +1180,6 @@ class Listener(QuietLogger):
             pass
 
         elif msg.is_query():
-            log.debug("zeroconf:Message is query")
             # Always multicast responses
             if port == _MDNS_PORT:
                 self.zc.handle_query(msg, _MDNS_ADDR, _MDNS_PORT)
@@ -1977,40 +1976,33 @@ class Zeroconf(QuietLogger):
         # Support unicast client responses
         #
         if port != _MDNS_PORT:
-            log.debug("zeroconf:Port is not MDNS")
             out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA, multicast=False)
             for question in msg.questions:
                 out.add_question(question)
 
         for question in msg.questions:
             if question.type == _TYPE_PTR:
-                log.debug("zeroconf:Found pointer")
                 if question.name == "_services._dns-sd._udp.local.":
                     for stype in self.servicetypes.keys():
                         if out is None:
-                            log.debug("zeroconf:no out")
                             out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA)
                         out.add_answer(msg, DNSPointer(
                             "_services._dns-sd._udp.local.", _TYPE_PTR,
                             _CLASS_IN, _DNS_TTL, stype))
                 for service in self.services.values():
                     if question.name == service.type:
-                        log.debug("zeroconf:Found matching question name")
                         if out is None:
                             out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA)
                         out.add_answer(msg, DNSPointer(
                             service.type, _TYPE_PTR,
                             _CLASS_IN, _DNS_TTL, service.name))
             else:
-                log.debug("zeroconf:Not a pointer")
                 try:
                     if out is None:
-                        log.debug("zeroconf:Out is none")
                         out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA)
 
                     # Answer A record queries for any service addresses we know
                     if question.type in (_TYPE_A, _TYPE_ANY):
-                        log.debug("zeroconf:Question type a, any")
                         for service in self.services.values():
                             if service.server == question.name.lower():
                                 out.add_answer(msg, DNSAddress(
