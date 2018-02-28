@@ -122,11 +122,16 @@ class PlexController(MediaController):
         else:
             verified = False
 
+        if 'Version' in params:
+            server_version = params['Version']
+        else:
+            server_version = "1.10.1.4602"
+
         self.logger.debug("Protocol, address, port and verified are %s %s %s and %s", protocol, address, port, verified)
 
         msg = {
           "type": "LOAD",
-          "requestId": self.request_id,
+          "requestId": 0,
           "sessionId": None,   #Does this need to be static?
           "media": {
             "contentId": params['Contentid'],
@@ -148,7 +153,7 @@ class PlexController(MediaController):
                 "transcoderVideo": True,
                 "transcoderVideoRemuxOnly": False,
                 "transcoderAudio": True,
-                "version": "1.11.0.4666",
+                "version": server_version ,
                 "myPlexSubscription": True,
                 "isVerifiedHostname": verified,
                 "protocol": protocol,
@@ -161,7 +166,7 @@ class PlexController(MediaController):
                 "transcoderVideo": True,
                 "transcoderVideoRemuxOnly": False,
                 "transcoderAudio": True,
-                "version": "1.11.3.4803",
+                "version": server_version,
                 "myPlexSubscription": True,
                 "isVerifiedHostname": verified,
                 "protocol": protocol,

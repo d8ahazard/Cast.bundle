@@ -36,7 +36,7 @@ from lib import Plex
 # from Framework.docutils import Data
 
 NAME = 'Cast'
-VERSION = '1.1.102'
+VERSION = '1.1.103'
 PREFIX = '/applications/Cast'
 PREFIX2 = '/chromecast'
 APP = '/chromecast'
@@ -276,8 +276,8 @@ def Play():
     """
     Log.Debug('Recieved a call to play media.')
     params = ['Uri', 'Requestid', 'Contentid', 'Contenttype', 'Offset', 'Serverid', 'Serveruri',
-              'Username', "Token", "Queueid"]
-    values = sort_headers(params, True)
+              'Username', "Token", "Queueid", "Version"]
+    values = sort_headers(params, False)
     status = "Missing required headers"
     msg = status
     if values is not False:
