@@ -1685,10 +1685,9 @@ class Zeroconf(QuietLogger):
         for i in interfaces:
             log.debug('zeroconf:Adding %r to multicast group', i)
             try:
-                socket_var = socket.inet_aton(i)
                 self._listen_socket.setsockopt(
                     socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
-                    socket.inet_aton(_MDNS_ADDR) + socket_var)
+                    socket.inet_aton(_MDNS_ADDR) + socket.inet_aton(i))
 
             except socket.error as e:
                 if get_errno(e) == errno.EADDRINUSE:

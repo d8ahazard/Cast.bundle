@@ -276,7 +276,7 @@ def Play():
     """
     Log.Debug('Recieved a call to play media.')
     params = ['Clienturi','Contentid', 'Contenttype', 'Serverid', 'Serveruri',
-              'Username', "Transienttoken", "Queueid", "Version"]
+              'Username', 'Transienttoken', 'Queueid', 'Version']
     values = sort_headers(params, False)
     status = "Missing required headers"
     msg = status
@@ -286,6 +286,13 @@ def Play():
         host = client_uri[0]
         port = int(client_uri[1])
         pc = False
+        servers = fetch_servers()
+        for server in servers:
+            if server['id'] == values['Serverid']:
+                Log.Debug("Found a matching server!")
+                values['Serveruri'] = server['uri']
+                values['Version'] = server['version']
+
         msg = "No message received"
         try:
             cast = pychromecast.Chromecast(host, port)
@@ -623,6 +630,28 @@ def fetch_devices():
 
     return casts
 
+
+def fetch_servers():
+    port = os.environ.get("PLEXSERVERPORT")
+    myurl = 'http://127.0.0.1:%s/servers' % port
+    Log.Debug("Gonna connect to %s" % myurl)
+    req = HTTP.Request(myurl)
+    req.load()
+    servers = []
+    client_data = req.content
+    root = ET.fromstring(client_data)
+    for device in root.iter('Server'):
+        version = device.get("version").split("-")[0]
+        local_item = {
+            "name": device.get('name'),
+            "uri": "http://" + device.get('host') + ":" + str(device.get('port')),
+            "version": version,
+            "id": device.get('machineIdentifier')
+        }
+        Log.Debug("Got me a server: %s" % local_item)
+        servers.append(local_item)
+
+    return servers
 
 # Scan our devices and save them to cache.
 # This should NEVER be called from an endpoint...we don't have the time

@@ -88,7 +88,7 @@ def start_discovery(callback=None):
     listener = CastListener(callback)
     service_browser = False
     try:
-        service_browser = zeroconf.ServiceBrowser(zeroconf.Zeroconf(),
+        service_browser = zeroconf.ServiceBrowser(zeroconf.Zeroconf(interfaces=zeroconf.InterfaceChoice.Default),
                                                   "_googlecast._tcp.local.",
                                                   listener)
     except (zeroconf.BadTypeInNameException,
