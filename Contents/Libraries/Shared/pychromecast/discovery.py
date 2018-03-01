@@ -1,5 +1,4 @@
 """Discovers Chromecasts on the network using mDNS/zeroconf."""
-import logging
 import socket
 from uuid import UUID
 
@@ -7,10 +6,6 @@ import six
 import zeroconf
 
 DISCOVER_TIMEOUT = 5
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(logging.NullHandler())
 
 
 class CastListener(object):
@@ -36,7 +31,6 @@ class CastListener(object):
         self.services.pop(name, None)
 
     def add_service(self, zconf, typ, name):
-        log.debug("pcc:discover:add_service called for name of %s" % name)
         """ Add a service to the collection. """
         service = None
         tries = 0
@@ -91,7 +85,6 @@ def start_discovery(callback=None):
     chromecasts. To stop discovery, call the stop_discovery method with the
     ServiceBrowser object.
     """
-    log.debug("Discovery called")
     listener = CastListener(callback)
     service_browser = False
     try:
@@ -114,7 +107,6 @@ def stop_discovery(browser):
 
 
 def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
-    log.debug("Discover chromecasts called and logged.")
     """ Discover chromecasts on the network. """
     from threading import Event
     browser = False
@@ -133,7 +125,7 @@ def discover_chromecasts(max_devices=None, timeout=DISCOVER_TIMEOUT):
 
         return listener.devices
     except Exception:  # pylint: disable=broad-except
-        log.debug("An exception occurred!")
+        raise
     finally:
         if browser is not False:
             stop_discovery(browser)

@@ -7,9 +7,6 @@ from urlparse import urlparse
 
 from pychromecast.controllers.media import MediaController
 
-from . import BaseController
-from ..config import APP_PLEX
-
 STREAM_TYPE_UNKNOWN = "UNKNOWN"
 STREAM_TYPE_BUFFERED = "BUFFERED"
 STREAM_TYPE_LIVE = "LIVE"
@@ -44,21 +41,24 @@ class PlexController(MediaController):
         self.media_meta = {}
         self.volume = 1
         self.muted = False
-        self.stream_type=""
+        self.stream_type = ""
         self.state = "Idle"
 
-
-    def set_volume(self, percent ,cast):
+    @staticmethod
+    def set_volume(percent, cast):
         percent = float(percent) / 100
         cast.set_volume(percent)
 
-    def volume_up(self, cast):
+    @staticmethod
+    def volume_up(cast):
         cast.volume_up()
 
-    def volume_down(self, cast):
+    @staticmethod
+    def volume_down(cast):
         cast.volume_down()
 
-    def mute(self, cast, status):
+    @staticmethod
+    def mute(cast, status):
         cast.set_volume_muted(status)
 
     def stop(self):
@@ -94,29 +94,42 @@ class PlexController(MediaController):
     def get_last_message(self):
         return self.last_message
 
-    def play_media(self, item, type,callback_function=None):
+    def play_media(self, params, callback_function=None, **kwargs):
+        """
+        Launch the Plex chromecast app and initiate playback
+
+        :dict params: Requires the following keys for successful playback-
+            'Contentid' - The media key from PMS
+            'Contenttype' - 'audio' or 'video'
+            'Serverid' - ID of the PMS Server where the media is located
+            'Serveruri' - URI of the PMS Server (http(s)://server.ip.or.hostname:PORT)
+            'Transienttoken' - A transient token for the server hosting the media
+            'Username' - Name of the PMS user
+            'Queueid' - The Playqueue ID containing the media
+            'Serverversion' (Optional) - Version of the server hosting the media
+            'Offset' (Optional) - Interval, in milliseconds, to start playback from
+
+        :callable|None callback_function:
+        :param kwargs: additional arguments
+        """
         self.namespace = "urn:x-cast:plex"
+
         def app_launched_callback():
             self.logger.debug("Application is launched")
-            self.set_load(item, type,callback_function)
+            self.set_load(params, callback_function)
 
         receiver_ctrl = self._socket_client.receiver_controller
-        receiver_ctrl.launch_app(self.app_id,callback_function=app_launched_callback)
+        receiver_ctrl.launch_app(self.app_id, callback_function=app_launched_callback)
 
-    def set_load(self, params,type,callback_function):
+    def set_load(self, params, callback_function):
         self.logger.debug("Reached the load phase")
         self.namespace = "urn:x-cast:com.google.cast.media"
-        playQueueID = params['Queueid']
+        play_queue_id = params['Queueid']
         self.request_id += 1  # Update
-        if (type == 'audio') | (type == 'group'):
-            tv = True
-        else:
-            tv = False
-        # TODO: Get the play queue type.
-        o = urlparse(params['Serveruri'])
-        protocol = o.scheme
-        address = o.hostname
-        port = o.port
+        server_uri = urlparse(params['Serveruri'])
+        protocol = server_uri.scheme
+        address = server_uri.hostname
+        port = server_uri.port
         if protocol == 'https':
             verified = True
         else:
@@ -127,81 +140,82 @@ class PlexController(MediaController):
         else:
             server_version = "1.10.1.4602"
 
+        if 'Offset' in params:
+            offset = int(params['offset'])
+        else:
+            offset = 0
+
         self.logger.debug("Protocol, address, port and verified are %s %s %s and %s", protocol, address, port, verified)
 
         msg = {
-          "type": "LOAD",
-          "requestId": 0,
-          "sessionId": None,   #Does this need to be static?
-          "media": {
-            "contentId": params['Contentid'],
-            "streamType": "BUFFERED",
-              "metadata": None,
-              "duration": None,
-              "tracks": None,
-              "textTrackStyle": None,
-            "customData": {
-              "playQueueType": params['Contenttype'],  #TODO: GET THIS RIGHT
-              "providerIdentifier": "com.plexapp.plugins.library",
-              "containerKey": "/playQueues/{}?own=1".format(playQueueID),
-              "offset": int(params['Offset']),
-              "directPlay": True,
-              "directStream": True,
-              "audioBoost": 100,
-              "server": {
-                "machineIdentifier": params["Serverid"],
-                "transcoderVideo": True,
-                "transcoderVideoRemuxOnly": False,
-                "transcoderAudio": True,
-                "version": server_version ,
-                "myPlexSubscription": True,
-                "isVerifiedHostname": verified,
-                "protocol": protocol,
-                "address": address,
-                "port": str(port),
-                "accessToken": params["Token"]
-              },
-              "primaryServer": {
-                "machineIdentifier": params["Serverid"],
-                "transcoderVideo": True,
-                "transcoderVideoRemuxOnly": False,
-                "transcoderAudio": True,
-                "version": server_version,
-                "myPlexSubscription": True,
-                "isVerifiedHostname": verified,
-                "protocol": protocol,
-                "address": address,
-                "port": str(port),
-                "accessToken": params["Token"]
-              },
-              "user": {
-                "username": params["Username"]
-              }
-            }
-          },
-          "activeTrackIds":None,
-          "autoplay": True,
-          "currentTime": int(params['Offset']),
-          "customData": None
+            "type": "LOAD",
+            "requestId": 0,
+            "sessionId": None,  # Does this need to be static?
+            "media": {
+                "contentId": params['Contentid'],
+                "streamType": "BUFFERED",
+                "metadata": None,
+                "duration": None,
+                "tracks": None,
+                "textTrackStyle": None,
+                "customData": {
+                    "playQueueType": params['Contenttype'],  # TODO: GET THIS RIGHT
+                    "providerIdentifier": "com.plexapp.plugins.library",
+                    "containerKey": "/playQueues/{}?own=1".format(play_queue_id),
+                    "offset": offset,
+                    "directPlay": True,
+                    "directStream": True,
+                    "audioBoost": 100,
+                    "server": {
+                        "machineIdentifier": params["Serverid"],
+                        "transcoderVideo": True,
+                        "transcoderVideoRemuxOnly": False,
+                        "transcoderAudio": True,
+                        "version": server_version,
+                        "myPlexSubscription": True,
+                        "isVerifiedHostname": verified,
+                        "protocol": protocol,
+                        "address": address,
+                        "port": str(port),
+                        "accessToken": params["Transienttoken"]
+                    },
+                    "primaryServer": {
+                        "machineIdentifier": params["Serverid"],
+                        "transcoderVideo": True,
+                        "transcoderVideoRemuxOnly": False,
+                        "transcoderAudio": True,
+                        "version": server_version,
+                        "myPlexSubscription": True,
+                        "isVerifiedHostname": verified,
+                        "protocol": protocol,
+                        "address": address,
+                        "port": str(port),
+                        "accessToken": params["Transienttoken"]
+                    },
+                    "user": {
+                        "username": params["Username"]
+                    }
+                }
+            },
+            "activeTrackIds": None,
+            "autoplay": True,
+            "currentTime": offset,
+            "customData": None
         }
-        self.logger.debug("(DH) Sending message: " + json.dumps(msg))
+        self.logger.debug("Sending message: " + json.dumps(msg))
 
         def parse_status(data):
             self.update_plex_status(data)
 
+        self.send_message(msg, inc_session_id=True, callback_function=parse_status)
 
-        self.send_message(msg, inc_session_id=True,callback_function=parse_status)
-
-
-
-    def update_plex_status(self,data):
+    def update_plex_status(self, data):
         self.logger.debug("Got a request to update plex status: %s", json.dumps(data))
         self.media_meta = data['status'][0]['media']['metadata']
         self.volume = data['status'][0]['volume']['level']
         self.muted = data['status'][0]['volume']['muted']
         self.stream_type = data['status'][0]['customData']['type']
         self.state = data['status'][0]['playerState']
-
 
     def plex_status(self):
         self.namespace = "urn:x-cast:com.google.cast.media"
@@ -223,8 +237,6 @@ class PlexController(MediaController):
             "state": self.state
         }
 
-
-
     def receive_message(self, message, data):
         """ Called when a media message is received. """
         if data[MESSAGE_TYPE] == TYPE_MEDIA_STATUS:
@@ -233,7 +245,6 @@ class PlexController(MediaController):
 
         else:
             return False
-
 
     def _process_media_status(self, data):
         """ Processes a STATUS message. """
@@ -256,6 +267,3 @@ class PlexController(MediaController):
                 listener.new_media_status(self.status)
             except Exception:  # pylint: disable=broad-except
                 pass
-
-
-

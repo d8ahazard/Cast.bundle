@@ -1,6 +1,8 @@
 from __future__ import (
     absolute_import, division, print_function, unicode_literals)
 
+import os
+
 """ Multicast DNS Service Discovery for Python, v0.14-wmcbrine
     Copyright 2003 Paul Scott-Murphy, 2014 William McBrine
 
@@ -39,18 +41,19 @@ import ifaddr
 from six import binary_type, indexbytes, int2byte, iteritems, text_type
 from six.moves import xrange
 
+if os.name == "nt":
+    from win_inet_pton import inet_pton
+
 __author__ = 'Paul Scott-Murphy, William McBrine'
 __maintainer__ = 'Jakub Stasiak <jakub@stasiak.at>'
 __version__ = '0.19.1'
 __license__ = 'LGPL'
-
 
 __all__ = [
     "__version__",
     "Zeroconf", "ServiceInfo", "ServiceBrowser",
     "Error", "InterfaceChoice", "ServiceStateChange",
 ]
-
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -307,6 +310,7 @@ class AbstractMethodException(Error):
 class BadTypeInNameException(Error):
     pass
 
+
 # implementation classes
 
 
@@ -340,7 +344,6 @@ class QuietLogger(object):
 
 
 class DNSEntry(object):
-
     """A DNS entry"""
 
     def __init__(self, name, type_, class_):
@@ -388,7 +391,6 @@ class DNSEntry(object):
 
 
 class DNSQuestion(DNSEntry):
-
     """A DNS question entry"""
 
     def __init__(self, name, type_, class_):
@@ -406,7 +408,6 @@ class DNSQuestion(DNSEntry):
 
 
 class DNSRecord(DNSEntry):
-
     """A DNS record - like a DNS entry, but has a TTL"""
 
     def __init__(self, name, type_, class_, ttl):
@@ -470,7 +471,6 @@ class DNSRecord(DNSEntry):
 
 
 class DNSAddress(DNSRecord):
-
     """A DNS address record"""
 
     def __init__(self, name, type_, class_, ttl, address):
@@ -499,7 +499,6 @@ class DNSAddress(DNSRecord):
 
 
 class DNSHinfo(DNSRecord):
-
     """A DNS host information record"""
 
     def __init__(self, name, type_, class_, ttl, cpu, os):
@@ -533,7 +532,6 @@ class DNSHinfo(DNSRecord):
 
 
 class DNSPointer(DNSRecord):
-
     """A DNS pointer record"""
 
     def __init__(self, name, type_, class_, ttl, alias):
@@ -559,7 +557,6 @@ class DNSPointer(DNSRecord):
 
 
 class DNSText(DNSRecord):
-
     """A DNS text record"""
 
     def __init__(self, name, type_, class_, ttl, text):
@@ -589,7 +586,6 @@ class DNSText(DNSRecord):
 
 
 class DNSService(DNSRecord):
-
     """A DNS service record"""
 
     def __init__(self, name, type_, class_, ttl,
@@ -626,7 +622,6 @@ class DNSService(DNSRecord):
 
 
 class DNSIncoming(QuietLogger):
-
     """Object representation of an incoming DNS packet"""
 
     def __init__(self, data):
@@ -781,7 +776,6 @@ class DNSIncoming(QuietLogger):
 
 
 class DNSOutgoing(object):
-
     """Object representation of an outgoing packet"""
 
     def __init__(self, flags, multicast=True):
@@ -1035,7 +1029,6 @@ class DNSOutgoing(object):
 
 
 class DNSCache(object):
-
     """A cache of DNS entries"""
 
     def __init__(self):
@@ -1097,7 +1090,6 @@ class DNSCache(object):
 
 
 class Engine(threading.Thread):
-
     """An engine wraps read access to sockets, allowing objects that
     need to receive data from sockets to be called back when the
     sockets are ready.
@@ -1154,7 +1146,6 @@ class Engine(threading.Thread):
 
 
 class Listener(QuietLogger):
-
     """A Listener is used by this module to listen on the multicast
     group to which DNS messages are sent, allowing the implementation
     to cache information as it arrives.
@@ -1195,7 +1186,6 @@ class Listener(QuietLogger):
 
 
 class Reaper(threading.Thread):
-
     """A Reaper is used by this module to remove cache entries that
     have expired."""
 
@@ -1245,7 +1235,6 @@ class SignalRegistrationInterface(object):
 
 
 class ServiceBrowser(threading.Thread):
-
     """Used to browse for a service of a specific type.
 
     The listener object will have its add_service() and
@@ -1286,6 +1275,7 @@ class ServiceBrowser(threading.Thread):
                     listener.remove_service(*args)
                 else:
                     raise NotImplementedError(state_change)
+
             handlers.append(on_change)
 
         for h in handlers:
@@ -1364,7 +1354,6 @@ class ServiceBrowser(threading.Thread):
 
 
 class ServiceInfo(object):
-
     """Service information"""
 
     def __init__(self, type_, name, address=None, port=None, weight=0,
@@ -1575,6 +1564,7 @@ class ZeroconfServiceTypes(object):
     """
     Return all of the advertised services on any local networks
     """
+
     def __init__(self):
         self.found_services = set()
 
@@ -1617,8 +1607,8 @@ def get_all_addresses():
         for addr in iface.ips:
             ip = addr.ip
             if type(ip) is str:
-                if len(ip.split(".")) == 4:
-                    addresses.append(ip)
+                addresses.append(ip)
+
     return addresses
 
 
@@ -1626,7 +1616,7 @@ def normalize_interface_choice(choice):
     if choice is InterfaceChoice.Default:
         choice = ['0.0.0.0']
     elif choice is InterfaceChoice.All:
-        choice = ['0.0.0.0']
+        choice = get_all_addresses()
     return choice
 
 
@@ -1670,15 +1660,14 @@ def get_errno(e):
 
 
 class Zeroconf(QuietLogger):
-
     """Implementation of Zeroconf Multicast DNS Service Discovery
 
     Supports registration, unregistration, queries and browsing.
     """
 
     def __init__(
-        self,
-        interfaces=InterfaceChoice.All,
+            self,
+            interfaces=InterfaceChoice.All,
     ):
         """Creates an instance of the Zeroconf class, establishing
         multicast communications, listening and reaping threads.
@@ -1696,9 +1685,11 @@ class Zeroconf(QuietLogger):
         for i in interfaces:
             log.debug('zeroconf:Adding %r to multicast group', i)
             try:
+                socket_var = socket.inet_aton(i)
                 self._listen_socket.setsockopt(
                     socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
-                    socket.inet_aton(_MDNS_ADDR) + socket.inet_aton(i))
+                    socket.inet_aton(_MDNS_ADDR) + socket_var)
+
             except socket.error as e:
                 if get_errno(e) == errno.EADDRINUSE:
                     log.info(
@@ -1712,7 +1703,8 @@ class Zeroconf(QuietLogger):
                     )
                     continue
                 else:
-                    raise e
+                    log.info("Error %s",e)
+                    continue
 
             respond_socket = new_socket()
             respond_socket.setsockopt(
@@ -2047,7 +2039,7 @@ class Zeroconf(QuietLogger):
                 return
             try:
                 bytes_sent = s.sendto(packet, 0, (addr, port))
-            except Exception:   # TODO stop catching all Exceptions
+            except Exception:  # TODO stop catching all Exceptions
                 # on send errors, log the exception and keep going
                 self.log_exception_warning()
             else:
@@ -2075,3 +2067,4 @@ class Zeroconf(QuietLogger):
             self.reaper.join()
             for s in self._respond_sockets:
                 s.close()
+

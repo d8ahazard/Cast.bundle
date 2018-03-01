@@ -275,14 +275,14 @@ def Play():
     Endpoint to play media.
     """
     Log.Debug('Recieved a call to play media.')
-    params = ['Uri', 'Requestid', 'Contentid', 'Contenttype', 'Offset', 'Serverid', 'Serveruri',
-              'Username', "Token", "Queueid", "Version"]
+    params = ['Clienturi','Contentid', 'Contenttype', 'Serverid', 'Serveruri',
+              'Username', "Transienttoken", "Queueid", "Version"]
     values = sort_headers(params, False)
     status = "Missing required headers"
     msg = status
     if values is not False:
         Log.Debug("Holy crap, we have all the headers we need.")
-        client_uri = values['Uri'].split(":")
+        client_uri = values['Clienturi'].split(":")
         host = client_uri[0]
         port = int(client_uri[1])
         pc = False
@@ -290,10 +290,10 @@ def Play():
         try:
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
-            cast_type = cast.cast_type
+            values['Type'] = cast.cast_type
             pc = PlexController()
             cast.register_handler(pc)
-            pc.play_media(values, cast_type,log_data)
+            pc.play_media(values,log_data)
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')
             status = "Error"
@@ -411,7 +411,7 @@ def Audio():
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
             mc = cast.media_controller
-            mc.play_media(path, 'audio/mp3')
+            mc.play_media(path, 'audio/mp3', )
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')
         finally:
@@ -484,7 +484,7 @@ def Broadcast():
                     disconnect.append(cast)
 
             for mc in controllers:
-                mc.play_media(values['Path'], 'audio/mp3')
+                mc.play_media(values['Path'], 'audio/mp3', )
 
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')

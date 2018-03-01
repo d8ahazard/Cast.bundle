@@ -78,7 +78,7 @@ class BaseController(object):
             else:
                 raise UnsupportedNamespace(
                     ("Namespace {} is not supported by running"
-                     "application {} .").format(self.namespace,self.supporting_app_id))
+                     "application.").format(self.namespace))
 
         return self._message_func(
             self.namespace, data, inc_session_id, callback_function)

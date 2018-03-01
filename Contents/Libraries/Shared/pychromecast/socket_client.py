@@ -217,7 +217,6 @@ class SocketClient(threading.Thread):
         tries = self.tries
 
         if self.socket is not None:
-            self.logger.debug("Closing socket before retry")
             self.socket.close()
             self.socket = None
 
@@ -242,7 +241,6 @@ class SocketClient(threading.Thread):
                 self._report_connection_status(
                     ConnectionStatus(CONNECTION_STATUS_CONNECTING,
                                      NetworkAddress(self.host, self.port)))
-                self.logger.debug("Attempting to connect to socket here at %s %s", self.host, self.port)
                 self.socket.connect((self.host, self.port))
                 self.socket = ssl.wrap_socket(self.socket)
                 self.connecting = False
@@ -259,7 +257,6 @@ class SocketClient(threading.Thread):
             # socket.error is a deprecated alias of OSError in Python 3.3+,
             # can be removed when Python 2.x support is dropped
             except (OSError, socket.error) as err:
-                self.logger.error("Socket error: %s" % err)
                 self.connecting = True
                 if self.stop.is_set():
                     self.logger.error(
@@ -301,7 +298,7 @@ class SocketClient(threading.Thread):
         new_channel = self.destination_id != cast_status.transport_id
 
         if new_channel:
-            self._disconnect_channel(self.destination_id)
+            self.disconnect_channel(self.destination_id)
 
         self.app_namespaces = cast_status.namespaces
         self.destination_id = cast_status.transport_id
@@ -452,6 +449,11 @@ class SocketClient(threading.Thread):
         # route message to handlers
         if message.namespace in self._handlers:
 
+            # debug messages
+            if message.namespace != NS_HEARTBEAT:
+                self.logger.debug(
+                    "Received: %s", _message_to_string(message, data))
+
             # message handlers
             try:
                 handled = \
@@ -479,7 +481,7 @@ class SocketClient(threading.Thread):
         """ Cleanup open channels and handlers """
         for channel in self._open_channels:
             try:
-                self._disconnect_channel(channel)
+                self.disconnect_channel(channel)
             except Exception:  # pylint: disable=broad-except
                 pass
 
@@ -489,7 +491,6 @@ class SocketClient(threading.Thread):
             except Exception:  # pylint: disable=broad-except
                 pass
 
-        self.logger.debug("Closing socket on cleanup")
         self.socket.close()
         self._report_connection_status(
             ConnectionStatus(CONNECTION_STATUS_DISCONNECTED,
@@ -643,7 +644,7 @@ class SocketClient(threading.Thread):
                      'connectionType': 1}},
                 no_add_request_id=True)
 
-    def _disconnect_channel(self, destination_id):
+    def disconnect_channel(self, destination_id):
         """ Disconnect a channel with destination_id. """
         if destination_id in self._open_channels:
             self.send_message(
@@ -678,7 +679,11 @@ class ConnectionController(BaseController):
             return True
 
         if data[MESSAGE_TYPE] == TYPE_CLOSE:
-            self._socket_client.handle_channel_disconnected()
+            # The cast device is asking us to acknowledge closing this channel.
+            self._socket_client.disconnect_channel(message.source_id)
+
+            # Schedule a status update so that a channel is created.
+            self._socket_client.receiver_controller.update_status()
 
             return True
 
@@ -902,7 +907,7 @@ class ReceiverController(BaseController):
         is_new_app = self.app_id != status.app_id and self.app_to_launch
         self.status = status
 
-        #self.logger.debug("Received status: %s", self.status)
+        self.logger.debug("Received status: %s", self.status)
         self._report_status()
 
         if is_new_app and self.app_to_launch == self.app_id:
