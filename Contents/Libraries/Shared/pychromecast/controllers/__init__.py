@@ -36,6 +36,9 @@ class BaseController(object):
         return (self._socket_client is not None and
                 self.namespace in self._socket_client.app_namespaces)
 
+    def set_namespaces(self,namespaces):
+        self._socket_client.app_namespaces = namespaces
+
     def launch(self, callback_function=None):
         """ If set, launches app related to the controller. """
         self._check_registered()

@@ -82,6 +82,16 @@ class MediaContainer(CustomContainer):
         CustomContainer.__init__(self)
 
 
+# Class to emulate proper Plex media container
+class MetaContainer(CustomContainer):
+    def __init__(self, dict=None):
+        self.show_size=True
+        self.dict = dict
+        self.name="MetaData"
+        CustomContainer.__init__(self)
+
+
+
 # Class to emulate proper Plex device container
 class DeviceContainer(CustomContainer):
     def __init__(self, dict=None):

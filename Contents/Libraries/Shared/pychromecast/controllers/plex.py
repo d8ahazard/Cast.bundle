@@ -5,6 +5,7 @@ import json
 from time import sleep
 from urlparse import urlparse
 
+from pychromecast.controllers import BaseController
 from pychromecast.controllers.media import MediaController
 
 STREAM_TYPE_UNKNOWN = "UNKNOWN"
@@ -25,13 +26,12 @@ TYPE_MEDIA_STATUS = 'MEDIA_STATUS'
 TYPE_GET_STATUS = "GET_STATUS"
 
 
-class PlexController(MediaController):
+class PlexController(BaseController):
     """ Controller to interact with Plex namespace. """
 
-    def __init__(self):
-        super(MediaController, self).__init__(
+    def __init__(self,cast):
+        super(PlexController, self).__init__(
             "urn:x-cast:plex", "9AC194DC")
-
         self.app_id = "9AC194DC"
         self.namespace = "urn:x-cast:plex"
         self.request_id = 0
@@ -39,27 +39,26 @@ class PlexController(MediaController):
         self.receiver = None
         self.last_message = "No messages sent"
         self.media_meta = {}
-        self.volume = 1
+        self.volume = cast.status.volume_level
         self.muted = False
         self.stream_type = ""
         self.state = "Idle"
+        self._status_listeners = []
+        self.cast = cast
 
-    @staticmethod
-    def set_volume(percent, cast):
+
+    def set_volume(self, percent):
         percent = float(percent) / 100
-        cast.set_volume(percent)
+        self.cast.set_volume(percent)
 
-    @staticmethod
-    def volume_up(cast):
-        cast.volume_up()
+    def volume_up(self):
+        self.cast.volume_up()
 
-    @staticmethod
-    def volume_down(cast):
-        cast.volume_down()
+    def volume_down(self):
+        self.cast.volume_down()
 
-    @staticmethod
-    def mute(cast, status):
-        cast.set_volume_muted(status)
+    def mute(self, status):
+        self.cast.set_volume_muted(status)
 
     def stop(self):
         self.namespace = "urn:x-cast:plex"
@@ -212,8 +211,8 @@ class PlexController(MediaController):
     def update_plex_status(self, data):
         self.logger.debug("Got a request to update plex status: %s", json.dumps(data))
         self.media_meta = data['status'][0]['media']['metadata']
-        self.volume = data['status'][0]['volume']['level']
-        self.muted = data['status'][0]['volume']['muted']
+        self.volume = self.cast.status.volume_level
+        self.muted = self.cast.status.volume_muted
         self.stream_type = data['status'][0]['customData']['type']
         self.state = data['status'][0]['playerState']
 
@@ -239,31 +238,32 @@ class PlexController(MediaController):
 
     def receive_message(self, message, data):
         """ Called when a media message is received. """
+        self.logger.debug("Plex media receive function called.")
         if data[MESSAGE_TYPE] == TYPE_MEDIA_STATUS:
             self.logger.debug("(DH) MESSAGE RECEIVED: " + data)
             return True
 
-        else:
-            return False
+        return False
+
+    def register_status_listener(self, listener):
+        """ Register a listener for new media statusses. A new status will
+            call listener.new_media_status(status) """
+        self._status_listeners.append(listener)
+        return False
 
     def _process_media_status(self, data):
         """ Processes a STATUS message. """
-        self.status.update(data)
 
-        self.logger.debug("MediaPC:Received status %s", data)
-        self.raw_status = data
-        # Update session active threading event
-        if self.status.media_session_id is None:
-            self.session_active_event.clear()
-        else:
-            self.session_active_event.set()
-
-        self._fire_status_changed()
 
     def _fire_status_changed(self):
         """ Tells listeners of a changed status. """
         for listener in self._status_listeners:
             try:
-                listener.new_media_status(self.status)
+                self.logger.debug("Doing a thing with a listener...")
             except Exception:  # pylint: disable=broad-except
                 pass
+    def tear_down(self):
+        """ Called when controller is destroyed. """
+        super(PlexController, self).tear_down()
+
+        self._status_listeners[:] = []

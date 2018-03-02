@@ -25,7 +25,7 @@ from pychromecast.controllers.plex import PlexController
 from subzero.lib.io import FileIO
 
 import log_helper
-from CustomContainer import MediaContainer, DeviceContainer, CastContainer, ZipObject
+from CustomContainer import MediaContainer, DeviceContainer, CastContainer, ZipObject, StatusContainer, MetaContainer
 from lib import Plex
 
 # Dummy Imports for PyCharm
@@ -298,7 +298,7 @@ def Play():
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
             values['Type'] = cast.cast_type
-            pc = PlexController()
+            pc = PlexController(cast)
             cast.register_handler(pc)
             pc.play_media(values,log_data)
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
@@ -347,7 +347,7 @@ def Cmd():
 
     """
     Log.Debug('Recieved a call to control playback')
-    params = sort_headers(['Uri', 'Cmd', 'Val'])
+    params = sort_headers(['Uri', 'Cmd', 'Val'],False)
     status = "Missing paramaters"
     response = "Error"
 
@@ -355,7 +355,7 @@ def Cmd():
         uri = params['Uri'].split(":")
         cast = pychromecast.Chromecast(uri[0], int(uri[1]))
         cast.wait()
-        pc = PlexController()
+        pc = PlexController(cast)
         Log.Debug("Handler namespace is %s" % pc.namespace)
         cast.register_handler(pc)
 
@@ -372,20 +372,20 @@ def Cmd():
             pc.stop()
         if cmd == "next":
             pc.next()
-        if cmd == "offset":
+        if (cmd == "offset") & ('Val' in params):
             pc.seek(params["Val"])
         if cmd == "previous":
             pc.previous()
-        if cmd == "mute":
-            pc.mute(cast, True)
-        if cmd == "unmute":
-            pc.mute(cast, False)
-        if cmd == "volume":
+        if cmd == "volume.mute":
+            pc.mute(True)
+        if cmd == "volume.unmute":
+            pc.mute(False)
+        if (cmd == "volume") & ('Val' in params):
             pc.set_volume(params["Val"])
-        if cmd == "voldown":
-            pc.volume_down(cast)
-        if cmd == "volup":
-            pc.volume_up(cast)
+        if cmd == "volume.down":
+            pc.volume_down()
+        if cmd == "volume.up":
+            pc.volume_up()
 
         cast.disconnect()
         response = "Command successful"
@@ -548,25 +548,22 @@ def Status(input_name=False):
     devices = []
 
     for chromecast in chromecasts:
-        cc = False
+        cast = False
         if show_all is not True:
             if chromecast['name'] == name:
                 Log.Debug("Found a matching chromecast: " + name)
-                cc = chromecast
+                cast = chromecast
 
             if chromecast['uri'] == uri:
                 Log.Debug("Found a matching uri:" + uri)
-                cc = chromecast
+                cast = chromecast
         else:
-            cc = chromecast
+            cast = chromecast
 
-        if cc is not False:
-            devices.append(cc)
+        if cast is not False:
+            devices.append(cast)
 
-    oc = ObjectContainer(
-        title1="Status",
-        no_cache=True,
-        no_history=True)
+    do = ""
 
     if len(devices) != 0:
         for device in devices:
@@ -575,29 +572,42 @@ def Status(input_name=False):
             host = uris[0]
             port = uris[1]
             Log.Debug("Host and port are %s and %s", host, port)
-            cc = pychromecast.Chromecast(host, int(port))
+            cast = pychromecast.Chromecast(host, int(port))
             Log.Debug("Waiting for device")
-            cc.wait(2)
-            Log.Debug("Device is here!")
-            pc = PlexController()
-            cc.register_handler(pc)
-            raw_status = pc.plex_status()
+            cast.wait(2)
+            app_id = cast.app_id
+            meta_dict = False
+            if app_id == "9AC194DC":
+                pc = PlexController(cast)
+                cast.register_handler(pc)
+                plex_status = pc.plex_status()
+                raw_status = {
+                    'state': plex_status['state'],
+                    'volume': plex_status['volume'],
+                    'muted': plex_status['muted']
+                }
+                meta_dict = plex_status['meta']
+            else:
+                raw_status = {"state":"idle"}
+
             Log.Debug("Did we get it?!?! %s",raw_status)
-            if not cc.is_idle:
+            if not cast.is_idle:
                 Log.Debug("We have a non-idle cast")
-                status = "Running" + cc.app_display_name()
+                status = "Running" + cast.app_display_name()
             else:
                 status = "Idle"
 
-            do = DirectoryObject(
-                title=device['name'],
-                duration=status,
-                tagline=device['uri'],
-                summary=device['app']
+            do = StatusContainer(
+                dict=raw_status
             )
-            oc.add(do)
+            if meta_dict is not False:
+                mc = MetaContainer(
+                    dict=meta_dict
+                )
 
-    return oc
+                do.add(mc)
+
+    return do
 
 
 def fetch_devices():
