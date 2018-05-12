@@ -92,6 +92,7 @@ def UpdateCache():
 def MainMenu(Rescanned=False):
     """
     Main menu
+    and stuff
     """
     Log.Debug("**********  Starting MainMenu  **********")
     title = NAME + " - " + VERSION
@@ -148,7 +149,7 @@ def ValidatePrefs():
     and stuff.
     """
 
-    dependencies = ['pychromecast','zeroconf']
+    dependencies = ['pychromecast', 'zeroconf']
     log_helper.register_logging_handler(dependencies, level="DEBUG")
     return
 
@@ -275,7 +276,7 @@ def Play():
     Endpoint to play media.
     """
     Log.Debug('Recieved a call to play media.')
-    params = ['Clienturi','Contentid', 'Contenttype', 'Serverid', 'Serveruri',
+    params = ['Clienturi', 'Contentid', 'Contenttype', 'Serverid', 'Serveruri',
               'Username', 'Transienttoken', 'Queueid', 'Version']
     values = sort_headers(params, False)
     status = "Missing required headers"
@@ -300,7 +301,7 @@ def Play():
             values['Type'] = cast.cast_type
             pc = PlexController(cast)
             cast.register_handler(pc)
-            pc.play_media(values,log_data)
+            pc.play_media(values, log_data)
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')
             status = "Error"
@@ -319,6 +320,7 @@ def Play():
 
 def log_data(data):
     Log.Debug("Is there data?? " + JSON.StringFromObject(data))
+
 
 @route(APP + '/cmd')
 def Cmd():
@@ -347,7 +349,7 @@ def Cmd():
 
     """
     Log.Debug('Recieved a call to control playback')
-    params = sort_headers(['Uri', 'Cmd', 'Val'],False)
+    params = sort_headers(['Uri', 'Cmd', 'Val'], False)
     status = "Missing paramaters"
     response = "Error"
 
@@ -588,9 +590,9 @@ def Status(input_name=False):
                 }
                 meta_dict = plex_status['meta']
             else:
-                raw_status = {"state":"idle"}
+                raw_status = {"state": "idle"}
 
-            Log.Debug("Did we get it?!?! %s",raw_status)
+            Log.Debug("Did we get it?!?! %s", raw_status)
             if not cast.is_idle:
                 Log.Debug("We have a non-idle cast")
                 status = "Running" + cast.app_display_name()
@@ -620,48 +622,68 @@ def fetch_devices():
         casts_string = Data.Load('device_json')
         casts = JSON.ObjectFromString(casts_string)
 
-    port = os.environ.get("PLEXSERVERPORT")
-    myurl = 'http://127.0.0.1:%s/clients' % port
-    Log.Debug("Gonna connect to %s" % myurl)
-    req = HTTP.Request(myurl)
-    req.load()
-    client_data = req.content
-    root = ET.fromstring(client_data)
-    for device in root.iter('Server'):
-        local_item = {
-            "name": device.get('name'),
-            "uri": device.get('host') + ":" + str(device.get('port')),
-            "status": "n/a",
-            "type": device.get('product'),
-            "app": "Plex Client",
-            "id": device.get('machineIdentifier')
-        }
-        casts.append(local_item)
+    token = False
+    for key, value in Request.Headers.items():
+        Log.Debug("Header key %s is %s", key, value)
+        if key in ("X-Plex-Token", "Token"):
+            Log.Debug("We have a Token")
+            token = value
+
+    if token:
+        port = os.environ.get("PLEXSERVERPORT")
+        url = Network.Address
+        myurl = "http://" + url + ":" + port + "/clients?X-Plex-Token=" + token
+        Log.Debug("Gonna connect to %s" % myurl)
+        req = HTTP.Request(myurl)
+        req.load()
+        client_data = req.content
+        root = ET.fromstring(client_data)
+        for device in root.iter('Server'):
+            local_item = {
+                "name": device.get('name'),
+                "uri": device.get('host') + ":" + str(device.get('port')),
+                "status": "n/a",
+                "type": device.get('product'),
+                "app": "Plex Client",
+                "id": device.get('machineIdentifier')
+            }
+            casts.append(local_item)
 
     return casts
 
 
 def fetch_servers():
-    port = os.environ.get("PLEXSERVERPORT")
-    myurl = 'http://127.0.0.1:%s/servers' % port
-    Log.Debug("Gonna connect to %s" % myurl)
-    req = HTTP.Request(myurl)
-    req.load()
+    token = False
+    for key, value in Request.Headers.items():
+        Log.Debug("Header key %s is %s", key, value)
+        if key in ("X-Plex-Token", "Token"):
+            Log.Debug("We have a Token")
+            token = value
+
     servers = []
-    client_data = req.content
-    root = ET.fromstring(client_data)
-    for device in root.iter('Server'):
-        version = device.get("version").split("-")[0]
-        local_item = {
-            "name": device.get('name'),
-            "uri": "http://" + device.get('host') + ":" + str(device.get('port')),
-            "version": version,
-            "id": device.get('machineIdentifier')
-        }
-        Log.Debug("Got me a server: %s" % local_item)
-        servers.append(local_item)
+
+    if token:
+        port = os.environ.get("PLEXSERVERPORT")
+        url = Network.Address
+        myurl = 'http://' + url + ':' + port + '/servers' + token
+        Log.Debug("Gonna connect to %s" % myurl)
+        req = HTTP.Request(myurl)
+        req.load()
+        client_data = req.content
+        root = ET.fromstring(client_data)
+        for device in root.iter('Server'):
+            version = device.get("version").split("-")[0]
+            local_item = {
+                "name": device.get('name'),
+                "uri": "http://" + device.get('host') + ":" + str(device.get('port')),
+                "version": version,
+                "id": device.get('machineIdentifier')
+            }
+            Log.Debug("Got me a server: %s" % local_item)
+            servers.append(local_item)
 
     return servers
+
 
 # Scan our devices and save them to cache.
 # This should NEVER be called from an endpoint...we don't have the time
