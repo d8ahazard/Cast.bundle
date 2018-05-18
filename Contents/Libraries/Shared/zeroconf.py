@@ -1613,11 +1613,10 @@ def get_all_addresses():
 
 
 def normalize_interface_choice(choice):
-    if choice is InterfaceChoice.Default:
-        choice = ['0.0.0.0']
-    elif choice is InterfaceChoice.All:
-        choice = get_all_addresses()
-    return choice
+    choices = ['0.0.0.0']
+    if choice is InterfaceChoice.All:
+        choices = choices + get_all_addresses()
+    return choices
 
 
 def new_socket():
@@ -1702,7 +1701,7 @@ class Zeroconf(QuietLogger):
                     )
                     continue
                 else:
-                    log.info("Error %s",e)
+                    log.info("Error %s", e)
                     continue
 
             respond_socket = new_socket()
@@ -2066,4 +2065,3 @@ class Zeroconf(QuietLogger):
             self.reaper.join()
             for s in self._respond_sockets:
                 s.close()
-

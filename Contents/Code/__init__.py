@@ -219,13 +219,12 @@ def Resources():
             icon = ICON_CAST_GROUP
         if cast['app'] == "Plex Client":
             icon = ICON_PLEX_CLIENT
-        Log.Debug("Type is %s", type)
         do = DirectoryObject(
             title=cast['name'],
             duration=cast['status'],
             tagline=cast['uri'],
             summary=cast['app'],
-            key=Callback(Status, input=cast['name']),
+            key=Callback(Status, input_name=cast['name']),
             thumb=R(icon))
         oc.add(do)
 
@@ -593,11 +592,6 @@ def Status(input_name=False):
                 raw_status = {"state": "idle"}
 
             Log.Debug("Did we get it?!?! %s", raw_status)
-            if not cast.is_idle:
-                Log.Debug("We have a non-idle cast")
-                status = "Running" + cast.app_display_name()
-            else:
-                status = "Idle"
 
             do = StatusContainer(
                 dict=raw_status
