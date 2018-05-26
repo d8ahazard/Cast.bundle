@@ -625,26 +625,35 @@ def fetch_devices():
 
     if token:
         port = os.environ.get("PLEXSERVERPORT")
-        if port is None: port = 32400
+        if port is None:
+            port = "32400"
         url = Network.Address
-        if url is None: url = "localhost"
-        myurl = "http://" + url + ":" + port + "/clients?X-Plex-Token=" + token
-        Log.Debug("Gonna connect to %s" % myurl)
-        req = HTTP.Request(myurl)
-        req.load()
-        if hasattr(req,'content'):
-            client_data = req.content
-            root = ET.fromstring(client_data)
-            for device in root.iter('Server'):
-                local_item = {
-                    "name": device.get('name'),
-                    "uri": device.get('host') + ":" + str(device.get('port')),
-                    "status": "n/a",
-                    "type": device.get('product'),
-                    "app": "Plex Client",
-                    "id": device.get('machineIdentifier')
-                }
-                casts.append(local_item)
+        if url is None:
+            url = "localhost"
+
+        try:
+            myurl = "http://" + url + ":" + port + "/clients?X-Plex-Token=" + token
+        except TypeError:
+            myurl = False
+            pass
+
+        if myurl:
+            Log.Debug("Gonna connect to %s" % myurl)
+            req = HTTP.Request(myurl)
+            req.load()
+            if hasattr(req, 'content'):
+                client_data = req.content
+                root = ET.fromstring(client_data)
+                for device in root.iter('Server'):
+                    local_item = {
+                        "name": device.get('name'),
+                        "uri": device.get('host') + ":" + str(device.get('port')),
+                        "status": "n/a",
+                        "type": device.get('product'),
+                        "app": "Plex Client",
+                        "id": device.get('machineIdentifier')
+                    }
+                    casts.append(local_item)
 
     return casts
 
