@@ -276,30 +276,34 @@ def Play():
     """
     Log.Debug('Recieved a call to play media.')
     params = ['Clienturi', 'Contentid', 'Contenttype', 'Serverid', 'Serveruri',
-              'Username', 'Transienttoken', 'Queueid', 'Version']
+              'Username', 'Transienttoken', 'Queueid', 'Version', 'Primaryserverid',
+              'Primaryserveruri', 'Primaryservertoken']
     values = sort_headers(params, False)
-    status = "Missing required headers"
+    status = "Missing required headers and stuff"
     msg = status
+
     if values is not False:
         Log.Debug("Holy crap, we have all the headers we need.")
         client_uri = values['Clienturi'].split(":")
         host = client_uri[0]
         port = int(client_uri[1])
         pc = False
-        servers = fetch_servers()
-        for server in servers:
-            if server['id'] == values['Serverid']:
-                Log.Debug("Found a matching server!")
-                values['Serveruri'] = server['uri']
-                values['Version'] = server['version']
-
         msg = "No message received"
+        if 'Serverid' in values:
+            servers = fetch_servers()
+            for server in servers:
+                if server['id'] == values['Serverid']:
+                    Log.Debug("Found a matching server!")
+                    values['Serveruri'] = server['uri']
+                    values['Version'] = server['version']
+
         try:
             cast = pychromecast.Chromecast(host, port)
             cast.wait()
             values['Type'] = cast.cast_type
             pc = PlexController(cast)
             cast.register_handler(pc)
+            Log.Debug("Sending values to play command: " + JSON.StringFromObject(values))
             pc.play_media(values, log_data)
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')

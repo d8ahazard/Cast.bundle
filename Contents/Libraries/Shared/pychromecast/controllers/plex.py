@@ -124,6 +124,7 @@ class PlexController(BaseController):
         self.logger.debug("Reached the load phase")
         self.namespace = "urn:x-cast:com.google.cast.media"
         play_queue_id = params['Queueid']
+        content_id = params['Contentid']
         self.request_id += 1  # Update
         server_uri = urlparse(params['Serveruri'])
         protocol = server_uri.scheme
@@ -144,64 +145,117 @@ class PlexController(BaseController):
         else:
             offset = 0
 
+        if 'providerIdentifier' in params:
+            provider_identifier = params['providerIdentifier']
+        else:
+            provider_identifier = "com.plexapp.plugins.library"
+
+        if "provider.plex.tv" in content_id:
+            self.logger.debug("This is a pc, we need to format")
+            container_key = "{}?own=1".format(content_id)
+            content_key = "/library/metadata/{}".format(play_queue_id)
+        else:
+            container_key = "/playQueues/{}?own=1".format(play_queue_id)
+            content_key = content_id
+
         self.logger.debug("Protocol, address, port and verified are %s %s %s and %s", protocol, address, port, verified)
 
-        msg = {
-            "type": "LOAD",
-            "requestId": 0,
-            "sessionId": None,  # Does this need to be static?
-            "media": {
-                "contentId": params['Contentid'],
+        server = {
+                    "machineIdentifier": params["Serverid"],
+                    "transcoderVideo": True,
+                    "transcoderVideoRemuxOnly": False,
+                    "transcoderAudio": True,
+                    "isVerifiedHostname": verified,
+                    "protocol": protocol,
+                    "address": address,
+                    "accessToken": params["Transienttoken"]
+                }
+
+        if port is not None:
+            server['port'] = str(port)
+
+        if 'Primaryserverid' in params:
+            primary_id = params['Primaryserverid']
+        else:
+            primary_id = params['Serverid']
+
+        if 'Primaryservertoken' in params:
+            primary_token = params['Primaryservertoken']
+        else:
+            primary_token = params['Transienttoken']
+
+        if 'Primaryserveruri' in params:
+            primary_uri = urlparse(params['Primaryserveruri'])
+            primary_protocol = primary_uri.scheme
+            primary_address = primary_uri.hostname
+            primary_port = primary_uri.port
+        else:
+            primary_protocol = protocol
+            primary_address = address
+            primary_port = port
+
+        if primary_protocol == 'https':
+            primary_verified = True
+        else:
+            primary_verified = False
+
+        primary_server = {
+                        "machineIdentifier": primary_id,
+                        "transcoderVideo": True,
+                        "transcoderVideoRemuxOnly": False,
+                        "transcoderAudio": True,
+                        "version": server_version,
+                        "myPlexSubscription": True,
+                        "isVerifiedHostname": primary_verified,
+                        "protocol": primary_protocol,
+                        "address": primary_address,
+                        "accessToken": primary_token
+                    }
+
+        if primary_port is not None:
+            primary_server['port'] = str(primary_port),
+
+        media = {
+                "contentId": content_key,
                 "streamType": "BUFFERED",
                 "metadata": None,
                 "duration": None,
                 "tracks": None,
                 "textTrackStyle": None,
                 "customData": {
-                    "playQueueType": params['Contenttype'],  # TODO: GET THIS RIGHT
-                    "providerIdentifier": "com.plexapp.plugins.library",
-                    "containerKey": "/playQueues/{}?own=1".format(play_queue_id),
+                    "playQueueType": params['Contenttype'],
+                    "providerIdentifier": provider_identifier,
+                    "containerKey": container_key,
                     "offset": offset,
                     "directPlay": True,
                     "directStream": True,
                     "audioBoost": 100,
-                    "server": {
-                        "machineIdentifier": params["Serverid"],
-                        "transcoderVideo": True,
-                        "transcoderVideoRemuxOnly": False,
-                        "transcoderAudio": True,
-                        "version": server_version,
-                        "myPlexSubscription": True,
-                        "isVerifiedHostname": verified,
-                        "protocol": protocol,
-                        "address": address,
-                        "port": str(port),
-                        "accessToken": params["Transienttoken"]
-                    },
-                    "primaryServer": {
-                        "machineIdentifier": params["Serverid"],
-                        "transcoderVideo": True,
-                        "transcoderVideoRemuxOnly": False,
-                        "transcoderAudio": True,
-                        "version": server_version,
-                        "myPlexSubscription": True,
-                        "isVerifiedHostname": verified,
-                        "protocol": protocol,
-                        "address": address,
-                        "port": str(port),
-                        "accessToken": params["Transienttoken"]
-                    },
+                    "audioForceMultiChannel": False,
+                    "autoPlay": True,
+                    "mediaIndex": None,
+                    "subtitleSize": 100,
+                    "server": server,
+                    "primaryServer": primary_server,
                     "user": {
                         "username": params["Username"]
                     }
                 }
-            },
+            }
+
+        self.logger.debug("Sending media message: " + json.dumps(media))
+
+        msg = {
+            "type": "LOAD",
+            "requestId": 0,
+            "sessionId": None,  # Does this need to be static?
+            "media": media,
             "activeTrackIds": None,
             "autoplay": True,
             "currentTime": offset,
             "customData": None
         }
-        self.logger.debug("Sending message: " + json.dumps(msg))
+
+        self.logger.debug("Sending playback message: " + json.dumps(msg))
 
         def parse_status(data):
             self.update_plex_status(data)
