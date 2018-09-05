@@ -36,7 +36,7 @@ from lib import Plex
 # from Framework.docutils import Data
 
 NAME = 'Cast'
-VERSION = '1.1.103'
+VERSION = '1.1.104'
 PREFIX = '/applications/Cast'
 PREFIX2 = '/chromecast'
 APP = '/chromecast'
