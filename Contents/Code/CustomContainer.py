@@ -11,7 +11,6 @@ ObjectClass = getattr(getattr(Redirect, "_object_class"), "__bases__")[0]
 
 class CustomContainer(ObjectClass):
 
-
     def __init__(self, attributes=None, children=None):
         ObjectClass.__init__(self, "")
         self.children = children
@@ -23,7 +22,7 @@ class CustomContainer(ObjectClass):
         xml = self.to_xml()
         return xml
 
-    def add(self,obj):
+    def add(self, obj):
         if self.children is None:
             self.items.append(obj)
         else:
@@ -43,7 +42,10 @@ class CustomContainer(ObjectClass):
 
         if self.show_size is True:
             size = str(len(self.items))
-            string += (' size="' + size + '"' )
+            string += (' size="' + size + '"')
+
+        version = "1.1.104"
+        string += (' version="' + version + '"')
 
         if self.dict is not None:
             for key, value in self.dict.items():
@@ -74,22 +76,22 @@ class CustomContainer(ObjectClass):
 
 
 # Class to emulate proper Plex media container
+# TODO: Auto grab version number from init
 class MediaContainer(CustomContainer):
     def __init__(self, dict=None):
-        self.show_size=True
+        self.show_size = True
         self.dict = dict
-        self.name="MediaContainer"
+        self.name = "MediaContainer"
         CustomContainer.__init__(self)
 
 
 # Class to emulate proper Plex media container
 class MetaContainer(CustomContainer):
     def __init__(self, dict=None):
-        self.show_size=True
+        self.show_size = True
         self.dict = dict
-        self.name="MetaData"
+        self.name = "MetaData"
         CustomContainer.__init__(self)
-
 
 
 # Class to emulate proper Plex device container
@@ -97,7 +99,7 @@ class DeviceContainer(CustomContainer):
     def __init__(self, dict=None):
         self.show_size = False
         self.dict = dict
-        self.name="Device"
+        self.name = "Device"
         allowed_attributes = [
             "name",
             "publicAddress",
@@ -122,12 +124,14 @@ class DeviceContainer(CustomContainer):
 
         CustomContainer.__init__(self, allowed_attributes, allowed_children)
 
+
 class CastContainer(CustomContainer):
     def __init__(self, dict=None):
         self.show_size = False
         self.dict = dict
-        self.name="Device"
+        self.name = "Device"
         CustomContainer.__init__(self)
+
 
 class StatusContainer(CustomContainer):
     def __init__(self, dict=None):
@@ -135,6 +139,7 @@ class StatusContainer(CustomContainer):
         self.dict = dict
         self.name = "Status"
         CustomContainer.__init__(self)
+
 
 class ZipObject(ObjectClass):
     def __init__(self, data):
