@@ -22,6 +22,11 @@ http://your.server.address:32400/chromecast/
 
 ALL queries require the ?X-Plex-Token= as part of the query string or header.
 
+## Headers:
+
+Headers can be specified as a normal header via GET, or appended to the query string by adding
+'X-Plex-' to the query parameter. For 'path', you would add &X-Plex-path=somePath to the query.
+
 
 ## /Devices
 
