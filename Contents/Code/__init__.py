@@ -36,7 +36,7 @@ from lib import Plex
 # from Framework.docutils import Data
 
 NAME = 'Cast'
-VERSION = '1.1.104'
+VERSION = '1.1.105'
 PREFIX = '/applications/Cast'
 PREFIX2 = '/chromecast'
 APP = '/chromecast'
@@ -427,7 +427,7 @@ def Audio():
         except pychromecast.LaunchError, pychromecast.PyChromecastError:
             Log.Debug('Error connecting to host.')
         finally:
-            Log.Debut("We have a cast")
+            Log.Debug("We have a cast")
             status = "Playback successful"
 
     oc = ObjectContainer(
@@ -483,7 +483,6 @@ def Broadcast():
         disconnect = []
         controllers = []
         try:
-
             for cast in casts:
                 if cast['type'] == "audio":
                     mc = MediaController()

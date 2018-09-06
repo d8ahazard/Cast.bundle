@@ -44,7 +44,7 @@ class CustomContainer(ObjectClass):
             size = str(len(self.items))
             string += (' size="' + size + '"')
 
-        version = "1.1.104"
+        version = "1.1.105"
         string += (' version="' + version + '"')
 
         if self.dict is not None:
